@@ -14,7 +14,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
+    --background: #ffffff/95;
     --foreground: #ededed;
   }
 }
@@ -22,5 +22,27 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: sans-serif;
+}
+
+.select-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  padding-right: 1rem; /* espaço para ícone */
+}
+
+.select-wrapper::after {
+  content: '▾'; /* seta para baixo */
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: #000;
 }
