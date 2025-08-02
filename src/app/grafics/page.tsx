@@ -1,13 +1,15 @@
 "use client";
+import { useState } from "react";
+import Modal from "../../components/ui/Modal"; // caminho correto do seu modal
 
-
-export default function HomePage() {
+export default function TestModal() {
+  const [open, setOpen] = useState(false);
   return (
-    <div className="min-h-screen flex flex-col bg-white/97 px-4">
-      <main className="flex-grow flex items-center justify-center">
-        <h1 className="text-2xl font-bold text-gray-800 text-center">Página Inicial - Teste Gráficos</h1>
-      </main>
-
-    </div>
+    <>
+      <button onClick={() => setOpen(true)}>Abrir Modal</button>
+      <Modal open={open} onClose={() => setOpen(false)} title="Teste">
+        <p>Conteúdo do modal visível</p>
+      </Modal>
+    </>
   );
 }

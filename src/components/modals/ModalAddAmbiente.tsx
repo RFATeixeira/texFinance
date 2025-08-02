@@ -88,7 +88,7 @@ export default function AddAmbienteModal({ isOpen, onClose }: Props) {
     <div className="fixed inset-0 backdrop-blur-xs text-gray-700 flex justify-center items-center z-50">
       <div
         ref={modalRef}
-        className="bg-white rounded-xl p-4 w-80 drop-shadow-lg relative"
+        className="relative bg-white rounded-xl p-4 w-80 drop-shadow-lg"
       >
         <button
           onClick={onClose}
