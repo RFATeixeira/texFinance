@@ -10,7 +10,6 @@ export type Cartao = {
 export type Conta = {
   id: string;
   nome: string;
-  saldo: number;
 };
 
 export type Transacao = {

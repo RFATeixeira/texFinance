@@ -14,24 +14,20 @@ type Props = {
 
 export default function AddContaModal({ isOpen, onClose, onSave }: Props) {
   const [nome, setNome] = useState("");
-  const [saldo, setSaldo] = useState(0);
   const modalRef = useRef<HTMLDivElement>(null);
 
   const handleSubmit = async () => {
     const user = auth.currentUser;
     if (!user) return;
 
-    const novaConta = { nome, saldo };
+    const novaConta = { nome }; // ❌ saldo removido
     const docRef = await addDoc(collection(db, "users", user.uid, "contas"), novaConta);
     onSave({ id: docRef.id, ...novaConta });
     onClose();
   };
 
   const handleClickOutside = (event: MouseEvent) => {
-    if (
-      modalRef.current &&
-      !modalRef.current.contains(event.target as Node)
-    ) {
+    if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
       onClose();
     }
   };
@@ -57,10 +53,10 @@ export default function AddContaModal({ isOpen, onClose, onSave }: Props) {
         className="relative bg-white rounded-xl p-4 w-80 drop-shadow-lg"
       >
         <button
-         onClick={onClose}
-         className="absolute top-4 right-4 text-gray-500 cursor-pointer"
-         >
-         <FaTimes />
+          onClick={onClose}
+          className="absolute top-4 right-4 text-gray-500 cursor-pointer"
+        >
+          <FaTimes />
         </button>
         <h2 className="text-lg font-semibold mb-4">Nova conta</h2>
         <div>
@@ -74,7 +70,10 @@ export default function AddContaModal({ isOpen, onClose, onSave }: Props) {
           />
         </div>
         <div className="flex justify-between gap-2">
-          <button onClick={onClose} className="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-2xl w-full transition duration-300">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-2xl w-full transition duration-300"
+          >
             Cancelar
           </button>
           <button

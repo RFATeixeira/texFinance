@@ -9,33 +9,38 @@ interface Transacao {
   uid?: string;
   descricao?: string;
   subcategoriaEmoji?: string;
+  ambiente?: string;
   [key: string]: any;
 }
 
 interface DespesasPorUsuarioListProps {
   despesasPorUsuario: Record<string, Transacao[]>;
   nomesUsuarios: Record<string, string>;
-  ordemDesc?: boolean; // nova prop para controlar a ordem
+  ordemDesc?: boolean;
+  ambienteAtual: string; // ✅ Nova prop adicionada
 }
 
 export default function DespesasPorUsuarioList({
   despesasPorUsuario,
   nomesUsuarios,
   ordemDesc = true,
+  ambienteAtual,
 }: DespesasPorUsuarioListProps) {
-  // 1. Junte todas as despesas numa lista só
+  // 1. Junta todas as despesas numa lista só e filtra pelo ambiente atual
   const todasDespesas = Object.entries(despesasPorUsuario).flatMap(([uid, despesas]) =>
-    despesas.map(d => ({ ...d, uid }))
+    despesas
+      .filter((d) => d.ambiente === ambienteAtual) // ✅ Filtro pelo ambiente
+      .map((d) => ({ ...d, uid }))
   );
 
-  // 2. Ordene TODAS as despesas conforme ordemDesc (data da despesa)
+  // 2. Ordena todas as despesas por data
   const despesasOrdenadas = todasDespesas.sort((a, b) => {
     const dataA = a.data?.toDate ? a.data.toDate().getTime() : new Date(a.data).getTime();
     const dataB = b.data?.toDate ? b.data.toDate().getTime() : new Date(b.data).getTime();
     return ordemDesc ? dataB - dataA : dataA - dataB;
   });
 
-  // 3. Agora agrupe as despesas ordenadas por data formatada
+  // 3. Agrupa as despesas ordenadas por data formatada
   const despesasPorData: Record<string, Transacao[]> = {};
   despesasOrdenadas.forEach((d) => {
     const dataObj = d.data?.toDate ? d.data.toDate() : d.data instanceof Date ? d.data : null;
@@ -48,7 +53,7 @@ export default function DespesasPorUsuarioList({
     despesasPorData[dataFormatada].push(d);
   });
 
-  // 4. Ordene as datas (os grupos)
+  // 4. Ordena as datas (grupos de despesas)
   const datasOrdenadas = Object.keys(despesasPorData).sort((a, b) => {
     const dataA = dayjs(a, "DD [de] MMMM [de] YYYY", "pt-br");
     const dataB = dayjs(b, "DD [de] MMMM [de] YYYY", "pt-br");

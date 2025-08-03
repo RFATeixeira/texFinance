@@ -31,70 +31,71 @@ export default function CardDespesasAmbiente({
 
   useEffect(() => {
     const fetchDespesas = async () => {
-      if (modo === "usuario" && !membro?.uid) return;
-      if (!ambienteId) return;
+  if (modo === "usuario" && !membro?.uid) return;
+  if (!ambienteId) return;
 
-      try {
-        let soma = 0;
+  try {
+    let soma = 0;
 
-        if (modo === "usuario" && membro?.uid) {
-          // Modo: despesas do membro específico
-          const transacoesRef = collection(db, "users", membro.uid, "transacoes");
-          const snapshot = await getDocs(transacoesRef);
+    if (modo === "usuario" && membro?.uid) {
+      const transacoesRef = collection(db, "users", membro.uid, "transacoes");
+      const snapshot = await getDocs(transacoesRef);
 
-          snapshot.forEach((doc) => {
-            const data = doc.data();
-            const dataTransacao = data.data?.toDate?.();
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        const dataTransacao = data.data?.toDate?.();
 
-            const isDespesa = data.type === "despesa";
-            const isMesEAno =
-              dataTransacao &&
-              dataTransacao.getMonth() === mes &&
-              dataTransacao.getFullYear() === ano;
+        const isDespesa = data.type === "despesa";
+        const isMesEAno =
+          dataTransacao &&
+          dataTransacao.getMonth() === mes &&
+          dataTransacao.getFullYear() === ano;
+        const isDoAmbiente = data.ambiente === ambienteId;
 
-            if (isDespesa && isMesEAno) {
-              const valor = Number(data.valor);
-              if (!isNaN(valor)) soma += valor;
-            }
-          });
+        if (isDespesa && isMesEAno && isDoAmbiente) {
+          const valor = Number(data.valor);
+          if (!isNaN(valor)) soma += valor;
         }
+      });
+    }
 
-        if (modo === "total") {
-          // Modo: despesas de todos os membros do ambiente
-          const membrosRef = collection(db, "ambiences", ambienteId, "membros");
-          const membrosSnapshot = await getDocs(membrosRef);
+    if (modo === "total") {
+      const membrosRef = collection(db, "ambiences", ambienteId, "membros");
+      const membrosSnapshot = await getDocs(membrosRef);
 
-          for (const membroDoc of membrosSnapshot.docs) {
-            const membroData = membroDoc.data();
-            const uid = membroData.uid;
-            if (!uid) continue;
+      for (const membroDoc of membrosSnapshot.docs) {
+        const membroData = membroDoc.data();
+        const uid = membroData.uid;
+        if (!uid) continue;
 
-            const transacoesRef = collection(db, "users", uid, "transacoes");
-            const transacoesSnapshot = await getDocs(transacoesRef);
+        const transacoesRef = collection(db, "users", uid, "transacoes");
+        const transacoesSnapshot = await getDocs(transacoesRef);
 
-            transacoesSnapshot.forEach((doc) => {
-              const data = doc.data();
-              const dataTransacao = data.data?.toDate?.();
+        transacoesSnapshot.forEach((doc) => {
+          const data = doc.data();
+          const dataTransacao = data.data?.toDate?.();
 
-              const isDespesa = data.type === "despesa";
-              const isMesEAno =
-                dataTransacao &&
-                dataTransacao.getMonth() === mes &&
-                dataTransacao.getFullYear() === ano;
+          const isDespesa = data.type === "despesa";
+          const isMesEAno =
+            dataTransacao &&
+            dataTransacao.getMonth() === mes &&
+            dataTransacao.getFullYear() === ano;
+          const isDoAmbiente = data.ambiente === ambienteId;
 
-              if (isDespesa && isMesEAno) {
-                const valor = Number(data.valor);
-                if (!isNaN(valor)) soma += valor;
-              }
-            });
+          if (isDespesa && isMesEAno && isDoAmbiente) {
+            const valor = Number(data.valor);
+            if (!isNaN(valor)) soma += valor;
           }
-        }
-
-        setTotal(soma);
-      } catch (error) {
-        console.error("Erro ao buscar despesas:", error);
+        });
       }
-    };
+    }
+
+    setTotal(soma);
+  } catch (error) {
+    console.error("Erro ao buscar despesas:", error);
+  }
+};
+
 
     fetchDespesas();
   }, [ambienteId, mes, ano, modo, membro]);

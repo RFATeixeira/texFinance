@@ -229,6 +229,7 @@ export default function DashBoardPageWrapper({ ambienteId }: { ambienteId: strin
           despesasPorUsuario={despesasFiltradas}
           nomesUsuarios={Object.fromEntries(membros.map((m) => [m.uid, m.nome]))}
           ordemDesc={ordemReversa}
+          ambienteAtual={ambienteId}
         />
       </div>
     </div>
