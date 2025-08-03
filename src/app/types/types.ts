@@ -8,6 +8,7 @@ export type Cartao = {
 };
 
 export type Conta = {
+  visivelNoSaldo: boolean;
   id: string;
   nome: string;
 };

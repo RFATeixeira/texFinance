@@ -14,14 +14,23 @@ type Props = {
 
 export default function AddContaModal({ isOpen, onClose, onSave }: Props) {
   const [nome, setNome] = useState("");
+  const [visivelNoSaldo, setVisivelNoSaldo] = useState(true); // <- novo estado
   const modalRef = useRef<HTMLDivElement>(null);
 
   const handleSubmit = async () => {
     const user = auth.currentUser;
     if (!user) return;
 
-    const novaConta = { nome }; // ❌ saldo removido
-    const docRef = await addDoc(collection(db, "users", user.uid, "contas"), novaConta);
+    const novaConta = {
+      nome,
+      visivelNoSaldo, // <- salvar esse campo
+    };
+
+    const docRef = await addDoc(
+      collection(db, "users", user.uid, "contas"),
+      novaConta
+    );
+
     onSave({ id: docRef.id, ...novaConta });
     onClose();
   };
@@ -58,7 +67,9 @@ export default function AddContaModal({ isOpen, onClose, onSave }: Props) {
         >
           <FaTimes />
         </button>
+
         <h2 className="text-lg font-semibold mb-4">Nova conta</h2>
+
         <div>
           <p className="text-sm font-semibold">Nome</p>
           <input
@@ -69,6 +80,35 @@ export default function AddContaModal({ isOpen, onClose, onSave }: Props) {
             className="w-full mb-2 p-2 border-2 border-purple-500 focus:outline-0 rounded-xl"
           />
         </div>
+
+        {/* Checkbox customizado */}
+        <div className="flex text-sm items-center text-gray-800 font-semibold gap-2 mb-4">
+          <input
+            type="checkbox"
+            id="mostrar-no-saldo"
+            className="peer hidden"
+            checked={visivelNoSaldo}
+            onChange={(e) => setVisivelNoSaldo(e.target.checked)}
+          />
+          <label
+            htmlFor="mostrar-no-saldo"
+            className="w-5 h-5 border-2 border-purple-500 rounded-md flex items-center justify-center peer-checked:bg-purple-500 peer-checked:border-purple-500 transition-colors cursor-pointer"
+          >
+            <svg
+              className="w-3 h-3 text-white hidden peer-checked:block"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </label>
+          <label htmlFor="mostrar-no-saldo" className="cursor-pointer">
+            Mostrar no saldo total
+          </label>
+        </div>
+
         <div className="flex justify-between gap-2">
           <button
             onClick={onClose}

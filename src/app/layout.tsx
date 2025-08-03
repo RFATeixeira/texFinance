@@ -1,6 +1,7 @@
 import "./globals.css";
 import { Comfortaa } from "next/font/google";
 import ClientLayout from "../components/ClientLayout";
+import PullToRefresh from "@/utils/PullToRefresh";
 
 const comfortaa = Comfortaa({ subsets: ["latin"], weight: ["400", "700"] });
 
@@ -19,8 +20,9 @@ export default function RootLayout({
       <link rel="manifest" href="/manifest.json" />
       <meta name="theme-color" content="#ffffff/97" />
       <body className={`${comfortaa.className} bg-white/97 text-gray-800`}>
-        {/* Renderiza um componente client para lidar com pathname */}
-        <ClientLayout>{children}</ClientLayout>
+        <PullToRefresh>
+          <ClientLayout>{children}</ClientLayout>
+        </PullToRefresh>
       </body>
     </html>
   );
