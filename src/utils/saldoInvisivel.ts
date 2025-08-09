@@ -68,8 +68,19 @@ export async function calcularSaldoContasInvisiveis(userId: string, mes?: number
   return total;
 }
 
-export function formatarValorVisibilidade(valor: number, visivel: boolean): string {
-  if (visivel) return valor.toFixed(2);
-  // máscara fixa solicitada
-  return '****';
+export function formatarValorVisibilidade(
+  valor: number | undefined | null,
+  visivel: boolean,
+  opts?: { mask?: string; empty?: string }
+): string {
+  const mask = opts?.mask ?? '****';
+  if (!visivel) return mask;
+  if (valor === undefined || valor === null || isNaN(Number(valor))) {
+    return opts?.empty ?? '0.00';
+  }
+  try {
+    return Number(valor).toFixed(2);
+  } catch {
+    return '0.00';
+  }
 }

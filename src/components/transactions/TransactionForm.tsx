@@ -14,11 +14,18 @@ interface Props {
 }
 
 export function TransactionForm({ tipo, transacao, onSaved, onClose }: Props) {
-  const { values, update, submit, loading, contas, categorias, isEdit, remove } = useTransactionForm({ tipo, transacao, onSaved, onClose });
+  const { values, update, submit, loading, contas, categorias, cartoes, ambientes, isEdit, remove } = useTransactionForm({ tipo, transacao, onSaved, onClose });
 
   return (
     <div className="flex flex-col gap-3">
-      <ValueField value={values.valor} onChange={(v) => update('valor', v)} />
+      <ValueField
+        value={values.valor}
+        onChange={(v) => update('valor', v)}
+        parcelado={tipo==='despesa' && !!values.cartaoId}
+        parcelas={values.parcelas || 1}
+        modo={values.valorModo || 'parcela'}
+        onModoChange={(m)=> update('valorModo', m)}
+      />
       <DateField value={values.data} onChange={(v) => update('data', v)} />
 
       {tipo === 'transferencia' ? (
@@ -28,12 +35,32 @@ export function TransactionForm({ tipo, transacao, onSaved, onClose }: Props) {
         </div>
       ) : (
         <>
-          <AccountSelect contas={contas} value={values.conta || ''} onChange={(v)=>update('conta', v)} />
+          {!values.cartaoId && (
+            <AccountSelect contas={contas} value={values.conta || ''} onChange={(v)=>update('conta', v)} />
+          )}
           <CategorySelect categorias={categorias} value={values.categoria || ''} onChange={(v)=>update('categoria', v)} subcategoria={values.subcategoria || ''} onSubChange={(v)=>update('subcategoria', v)} />
           {tipo === 'despesa' && (
             <label className="block text-sm font-semibold text-gray-700">Ambiente
-              <input value={values.ambiente || ''} onChange={(e)=>update('ambiente', e.target.value)} className="mt-1 w-full p-2 border-2 border-purple-500 rounded-2xl focus:outline-0" />
+              <select value={values.ambiente || ''} onChange={(e)=>update('ambiente', e.target.value)} className="mt-1 w-full p-2 border-2 border-purple-500 rounded-2xl focus:outline-0">
+                <option value="pessoal">Pessoal</option>
+                {ambientes.map(a=> <option key={a.id} value={a.id}>{a.nome}</option>)}
+              </select>
             </label>
+          )}
+          {tipo === 'despesa' && (
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block text-sm font-semibold text-gray-700">Cartão (parcelado)
+                <select value={values.cartaoId || ''} onChange={e=>update('cartaoId', e.target.value)} className="mt-1 w-full p-2 border-2 border-purple-500 rounded-2xl focus:outline-0">
+                  <option value="">(Sem cartão)</option>
+                  {cartoes.map(c=> <option key={c.id} value={c.id}>{c.nome}</option>)}
+                </select>
+              </label>
+              {values.cartaoId && (
+                <label className="block text-sm font-semibold text-gray-700">Parcelas
+                  <input type="number" min={1} value={values.parcelas || 1} onChange={e=>update('parcelas', Number(e.target.value))} className="mt-1 w-full p-2 border-2 border-purple-500 rounded-2xl focus:outline-0" />
+                </label>
+              )}
+            </div>
           )}
         </>
       )}
@@ -41,11 +68,9 @@ export function TransactionForm({ tipo, transacao, onSaved, onClose }: Props) {
       <label className="block text-sm font-semibold text-gray-700">Descrição
         <input value={values.descricao || ''} onChange={(e)=>update('descricao', e.target.value)} className="mt-1 w-full p-2 border-2 border-purple-500 rounded-2xl focus:outline-0" />
       </label>
-      <label className="block text-sm font-semibold text-gray-700">Observações
-        <textarea value={values.observacoes || ''} onChange={(e)=>update('observacoes', e.target.value)} className="mt-1 w-full p-2 border-2 border-purple-500 rounded-2xl focus:outline-0" />
-      </label>
+  {/* Observações removido */}
       <label className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700">
-        <input type="checkbox" checked={values.ocultar || false} onChange={(e)=>update('ocultar', e.target.checked)} /> Ocultar
+        <input className="purple-checkbox" type="checkbox" checked={values.ocultar || false} onChange={(e)=>update('ocultar', e.target.checked)} /> Ocultar
       </label>
 
       <div className="flex gap-2 pt-2">

@@ -75,7 +75,18 @@ export default function DespesasPorUsuarioList({
                 >
                   {/* Esquerda */}
                   <div>
-                    <p className="font-medium">{d.descricao || "Sem descrição"}</p>
+                    <p className="font-medium flex items-center gap-2 flex-wrap">
+                      <span>{d.descricao || "Sem descrição"}</span>
+                      {typeof d.parcelaNumero === "number" && typeof d.parcelas === "number" && d.parcelas > 1 && (
+                        <span
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border flex items-center gap-1 ${d.paid ? "bg-purple-50 border-purple-200 text-purple-600" : "bg-purple-100 border-purple-300 text-purple-700"}`}
+                          title={`Parcela ${d.parcelaNumero} de ${d.parcelas}`}
+                        >
+                          {d.parcelaNumero}/{d.parcelas}
+                          {!d.paid && <span className="w-1.5 h-1.5 rounded-full bg-purple-500 inline-block" />}
+                        </span>
+                      )}
+                    </p>
                     <p className="text-sm text-gray-500">
                       R$ {Number(d.valor).toFixed(2)}
                     </p>

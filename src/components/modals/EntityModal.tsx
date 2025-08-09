@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from 'react';
 import { auth, db } from '@/app/lib/firebaseConfig';
-import { addDoc, collection, setDoc, doc } from 'firebase/firestore';
+import { addDoc, collection, setDoc, doc, getDocs } from 'firebase/firestore';
 import { FaTimes } from 'react-icons/fa';
 
 interface EntityModalProps {
@@ -11,7 +11,7 @@ interface EntityModalProps {
   onSaved?: (data: any) => void;
 }
 
-const AMBIENTE_EMOJIS = ["🦷","⚡","💧","📁","💰","🍔","🍕","🏠","🚗","🛍️","🧾","📦","📚","💵","💶","💷","💳","💹","🪙","💴","💸","🏦","⛱️","❄️","🛋️","🛁","🧻","🌹","🍉","🍇","🍷","🍺","🍹","🍫","🥖","📉","📊","💡","🚬","💊","🧱","🔊","🎮","🎱","⚽","🏀","👖","🥼","🎁","🎉"]; 
+const AMBIENTE_EMOJIS = ["🦷","⚡","💧","📁","💰","🍔","🍕","🏠","🚗","🛍️","🧾","📦","📚","💵","💶","💷","💳","💹","🪙","💴","💸","🏦","⛱️","❄️","🛋️","🛁","🧻","🌹","🍉","🍇","🍷","🍺","🍹","🍫","🥖","📉","📊","💡","🚬","💊","🧱","🔊","🎮","🎱","⚽","🏀","👖","🥼","🎁","🎉","🔧","🪛","⛏️","📺","📱","🎧","🎤"]; 
 
 export default function EntityModal({ open, type, onClose, onSaved }: EntityModalProps) {
   const ref = useRef<HTMLDivElement>(null);
@@ -20,6 +20,11 @@ export default function EntityModal({ open, type, onClose, onSaved }: EntityModa
   // Conta
   const [contaNome, setContaNome] = useState('');
   const [visivelNoSaldo, setVisivelNoSaldo] = useState(true);
+  const [tipoConta, setTipoConta] = useState<'bancaria'|'investimento'|'vale_vr'|'vale_va'|'vale_vt'|'vale_saude'|'vale_educacao'|'vale_incentivo'>('bancaria');
+  // removido checkbox de exibir card de investimentos para criação; ficará apenas na edição
+  const [mostrarCardInvest, setMostrarCardInvest] = useState<boolean>(false); // legado (não exibido aqui)
+  const [parentContaId, setParentContaId] = useState<string>('');
+  const [parentContas, setParentContas] = useState<{id:string; nome:string; tipoConta?:string}[]>([]);
 
   // Cartão
   const [cartaoNome, setCartaoNome] = useState('');
@@ -42,11 +47,31 @@ export default function EntityModal({ open, type, onClose, onSaved }: EntityModa
 
   useEffect(() => {
     if (!open) {
-      setContaNome(''); setVisivelNoSaldo(true);
+  setContaNome(''); setVisivelNoSaldo(true); setTipoConta('bancaria'); setMostrarCardInvest(false); setParentContaId('');
       setCartaoNome(''); setBandeira(''); setLimite(0); setDiaFechamento(1); setDiaVencimento(1);
       setAmbienteNome(''); setIcone('🌿');
     }
   }, [open]);
+
+  // Carregar contas possíveis para parent quando modal abre ou tipo muda para investimento
+  useEffect(()=>{
+    (async ()=>{
+      if(!open || type !== 'conta' || tipoConta !== 'investimento') { setParentContas(prev=> prev); return; }
+      const user = auth.currentUser; if(!user) return;
+      try {
+        const snap = await getDocs(collection(db,'users', user.uid,'contas'));
+        const lista = snap.docs.map(d=> ({ id: d.id, nome: d.data().nome as string, tipoConta: (d.data() as any).tipoConta }));
+        setParentContas(lista.filter(c=> (c.tipoConta ?? 'bancaria') !== 'investimento'));
+      } catch(e){ console.error(e); }
+    })();
+  }, [open, type, tipoConta]);
+
+  // Reset parent selection if deixa de ser investimento
+  useEffect(()=>{
+    if(tipoConta !== 'investimento') setParentContaId('');
+  }, [tipoConta]);
+
+  // Preferência de card de investimentos agora gerenciada apenas no modal de edição da conta
 
   if (!open) return null;
 
@@ -56,7 +81,11 @@ export default function EntityModal({ open, type, onClose, onSaved }: EntityModa
     setLoading(true);
     try {
       if (type === 'conta') {
-        const data = { nome: contaNome, visivelNoSaldo };
+        if (tipoConta === 'investimento' && !parentContaId) { alert('Selecione a conta principal para o investimento'); setLoading(false); return; }
+        // Força contas de investimento a não entrarem no saldo final
+        const finalVisivel = tipoConta === 'investimento' ? false : visivelNoSaldo;
+        const data: any = { nome: contaNome, visivelNoSaldo: finalVisivel, tipoConta };
+        if (tipoConta === 'investimento') data.parentId = parentContaId;
         const docRef = await addDoc(collection(db, 'users', user.uid, 'contas'), data);
         onSaved?.({ id: docRef.id, ...data });
       } else if (type === 'cartao') {
@@ -79,15 +108,49 @@ export default function EntityModal({ open, type, onClose, onSaved }: EntityModa
 
   function renderBody() {
     if (type === 'conta') {
+      const isInvest = tipoConta === 'investimento';
       return (
         <div className="flex flex-col gap-4">
           <div>
             <p className="text-sm font-semibold">Nome</p>
             <input className="w-full p-2 border-2 border-purple-500 rounded-2xl focus:outline-0" value={contaNome} onChange={e=>setContaNome(e.target.value)} />
           </div>
-          <label className="flex items-center gap-2 text-sm font-semibold">
-            <input type="checkbox" checked={visivelNoSaldo} onChange={e=>setVisivelNoSaldo(e.target.checked)} /> Mostrar no saldo total
+          <div>
+            <p className="text-sm font-semibold">Tipo</p>
+            <select
+              className="w-full p-2 border-2 border-purple-500 rounded-2xl focus:outline-0 bg-white"
+              value={tipoConta}
+              onChange={e=> setTipoConta(e.target.value as any)}
+            >
+              <option value="bancaria">Conta Bancária</option>
+              <option value="investimento">Investimento</option>
+              <option value="vale_vr">Vale Refeição (VR)</option>
+              <option value="vale_va">Vale Alimentação (VA)</option>
+              <option value="vale_vt">Vale Transporte (VT)</option>
+              <option value="vale_saude">Saúde e Bem-estar</option>
+              <option value="vale_educacao">Educação e Desenvolvimento</option>
+              <option value="vale_incentivo">Incentivos Financeiros</option>
+            </select>
+          </div>
+          {isInvest && (
+            <div>
+              <p className="text-sm font-semibold">Conta Principal</p>
+              <select
+                className="w-full p-2 border-2 border-purple-500 rounded-2xl focus:outline-0 bg-white"
+                value={parentContaId}
+                onChange={e=> setParentContaId(e.target.value)}
+              >
+                <option value="">Selecione...</option>
+                {parentContas.map(pc=> (
+                  <option key={pc.id} value={pc.id}>{pc.nome}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <label className={`flex items-center gap-2 text-sm font-semibold ${isInvest? 'opacity-40 cursor-not-allowed':''}`}> 
+            <input type="checkbox" disabled={isInvest} checked={isInvest? false : visivelNoSaldo} onChange={e=>setVisivelNoSaldo(e.target.checked)} /> Mostrar no saldo total
           </label>
+          {/* Checkbox de exibir card removido daqui; agora só no modal de edição */}
         </div>
       );
     }

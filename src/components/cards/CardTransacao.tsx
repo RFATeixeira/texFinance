@@ -67,7 +67,19 @@ export default function CardTransacao({ transacao, onAtualizar }: { transacao: a
         className="bg-white p-4 rounded-2xl shadow-xl hover:shadow-2xl cursor-pointer flex justify-between items-center"
       >
         <div>
-          <p className="font-medium">{transacao.descricao}</p>
+          <p className="font-medium flex items-center gap-2 flex-wrap">
+            <span>{transacao.descricao}</span>
+            {typeof transacao.parcelaNumero === "number" && typeof transacao.parcelas === "number" && transacao.parcelas > 1 && (
+              <span
+                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border flex items-center gap-1
+                  ${transacao.paid ? "bg-purple-50 border-purple-200 text-purple-600" : "bg-purple-100 border-purple-300 text-purple-700"}`}
+                title={`Parcela ${transacao.parcelaNumero} de ${transacao.parcelas}`}
+              >
+                {transacao.parcelaNumero}/{transacao.parcelas}
+                {!transacao.paid && <span className="w-1.5 h-1.5 rounded-full bg-purple-500 inline-block" />}
+              </span>
+            )}
+          </p>
           <p className={`${cor} font-semibold`}>
             R$ {transacao.valor.toFixed(2)}
           </p>

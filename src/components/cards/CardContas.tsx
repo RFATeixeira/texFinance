@@ -2,7 +2,7 @@
 
 import { useState, useEffect, startTransition } from "react";
 import { Conta, Transacao } from "@/app/types/types";
-import { FaPlus, FaWallet } from "react-icons/fa";
+import { FaPlus, FaWallet, FaChevronDown, FaChevronRight } from "react-icons/fa";
 
 import Modal from "@/components/ui/Modal";
 
@@ -43,6 +43,7 @@ export default function ContasList({ onAdd }: Props) {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [userUid, setUserUid] = useState<string | null>(null);
   const [mostrarValores, setMostrarValores] = useState(true);
+  const [showInvestCard, setShowInvestCard] = useState(false);
 
   useEffect(() => {
   let unsubscribeContas = () => {};
@@ -108,12 +109,14 @@ export default function ContasList({ onAdd }: Props) {
 
   const salvarAlteracoesConta = async () => {
     if (!contaSelecionada || !userUid) return;
-
     const docRef = doc(db, "users", userUid, "contas", contaSelecionada.id);
     await updateDoc(docRef, {
       nome: contaSelecionada.nome,
       visivelNoSaldo: contaSelecionada.visivelNoSaldo ?? true,
     });
+    if((contaSelecionada as any)?.tipoConta === 'investimento'){
+      try { localStorage.setItem('showInvestCard', showInvestCard ? 'true':'false'); } catch {}
+    }
     setEditModalOpen(false);
   };
 
@@ -130,8 +133,33 @@ export default function ContasList({ onAdd }: Props) {
     if(stored!==null) setMostrarValores(stored==='true');
     function handler(e:any){ startTransition(()=> setMostrarValores(!!e.detail?.visivel)); }
     window.addEventListener('visibilidade-valores', handler as any);
+    try { const pref = localStorage.getItem('showInvestCard'); setShowInvestCard(pref==='true'); } catch {}
     return ()=> window.removeEventListener('visibilidade-valores', handler as any);
   }, []);
+
+  // Organizar hierarquia (contas parent -> children investimento)
+  const parents = contas.filter(c => !(c as any).parentId);
+  const childrenMap: Record<string, Conta[]> = {};
+  contas.filter(c=> (c as any).parentId).forEach(c => {
+    const p = (c as any).parentId as string;
+    if(!childrenMap[p]) childrenMap[p] = [];
+    childrenMap[p].push(c);
+  });
+
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+  function tipoLabel(conta: any){
+    switch(conta.tipoConta){
+      case 'investimento': return 'Conta investimento';
+      case 'vale_vr': return 'Conta (VR)';
+      case 'vale_va': return 'Conta (VA)';
+      case 'vale_vt': return 'Conta (VT)';
+      case 'vale_saude': return 'Conta (Saúde)';
+      case 'vale_educacao': return 'Conta (Educação)';
+      case 'vale_incentivo': return 'Conta (Incentivo)';
+      default: return 'Conta bancária';
+    }
+  }
 
   return (
     <>
@@ -151,39 +179,87 @@ export default function ContasList({ onAdd }: Props) {
         ) : contas.length === 0 ? (
           <p className="text-sm text-gray-500">Nenhuma conta cadastrada.</p>
         ) : (
-          contas.map((conta) => {
-            const saldo = calcularSaldo(conta.id); // ✅ sempre calcula
+          parents.map((conta) => {
+            const saldo = calcularSaldo(conta.id);
+            const children = childrenMap[conta.id] || [];
+            const hasChildren = children.length > 0;
+            const isOpen = expanded[conta.id];
             return (
-              <div
-                key={conta.id}
-                className="bg-gray-50 p-4 rounded-xl text-gray-800 cursor-pointer hover:bg-purple-50 transition"
-                onClick={() => {
-                  setContaSelecionada(conta);
-                  setEditModalOpen(true);
-                }}
-              >
-                <div className="flex justify-between items-start">
-                  <div className="flex gap-2 w-full justify-between">
-                    <div className="flex flex-row gap-2">
-                     <div className="w-8 h-8 bg-purple-100 rounded-md flex items-center justify-center">
-                       <FaWallet className="text-purple-500" />
-                     </div>
-                     <div>
-                        <p className="text-xs text-gray-500">Conta bancária</p>
-                        <p className="text-sm font-semibold text-gray-800">{conta.nome}</p>
-                     </div>
+              <div key={conta.id} className="flex flex-col gap-1">
+                <div
+                  className="bg-gray-50 p-4 rounded-xl text-gray-800 cursor-pointer hover:bg-purple-50 transition flex flex-col"
+                  onClick={() => {
+                    setContaSelecionada(conta);
+                    setEditModalOpen(true);
+                  }}
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex gap-2 w-full justify-between">
+                      <div className="flex flex-row gap-2">
+                        <div className="w-8 h-8 bg-purple-100 rounded-md flex items-center justify-center">
+                          <FaWallet className="text-purple-500" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500">{tipoLabel(conta)}</p>
+                          <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                            {conta.nome}
+                            {hasChildren && (
+                              <button
+                                type="button"
+                                onClick={(e)=>{ e.stopPropagation(); setExpanded(ex=> ({...ex, [conta.id]: !isOpen})); }}
+                                className="text-purple-500 text-xs flex items-center gap-1"
+                              >
+                                {isOpen ? <FaChevronDown /> : <FaChevronRight />}
+                              </button>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                      {conta.visivelNoSaldo === false && (
+                        <p className="text-xs text-end text-gray-400 italic">Oculta no saldo</p>
+                      )}
                     </div>
-                    {conta.visivelNoSaldo === false && (
-                     <p className="text-xs text-end text-gray-400 italic">Oculta no saldo</p>
-                    )}
+                  </div>
+                  <div className="flex justify-between mt-2">
+                    <p className="text-xs text-gray-500">Saldo atual</p>
+                    <p className="text-sm font-bold text-gray-800">R$ {formatarValorVisibilidade(saldo, mostrarValores)}</p>
                   </div>
                 </div>
-                <div className="flex justify-between mt-2">
-                  <p className="text-xs text-gray-500">Saldo atual</p>
-                  <p className="text-sm font-bold text-gray-800">
-                    R$ {formatarValorVisibilidade(saldo, mostrarValores)}
-                  </p>
-                </div>
+                {isOpen && hasChildren && (
+                  <div className="ml-4 flex flex-col gap-1">
+                    {children.map(child => {
+                      const saldoChild = calcularSaldo(child.id);
+                      return (
+                        <div
+                          key={child.id}
+                          className="bg-white border border-purple-100 p-3 rounded-xl text-gray-800 cursor-pointer hover:bg-purple-50 transition"
+                          onClick={() => { setContaSelecionada(child); setEditModalOpen(true); }}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div className="flex gap-2 w-full justify-between">
+                              <div className="flex flex-row gap-2">
+                                <div className="w-6 h-6 bg-purple-50 rounded-md flex items-center justify-center">
+                                  <FaWallet className="text-purple-400 text-xs" />
+                                </div>
+                                <div>
+                                  <p className="text-[10px] text-gray-500">{tipoLabel(child)}</p>
+                                  <p className="text-xs font-semibold text-gray-800">{child.nome}</p>
+                                </div>
+                              </div>
+                              {child.visivelNoSaldo === false && (
+                                <p className="text-[10px] text-end text-gray-400 italic">Oculta</p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex justify-between mt-1">
+                            <p className="text-[10px] text-gray-500">Saldo</p>
+                            <p className="text-xs font-bold text-gray-800">R$ {formatarValorVisibilidade(saldoChild, mostrarValores)}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })
@@ -213,36 +289,62 @@ export default function ContasList({ onAdd }: Props) {
             />
 
             <div className="flex text-sm items-center text-gray-800 font-semibold gap-2 mb-4">
-             <input
-               type="checkbox"
-               id="visivel-no-saldo"
-               className="peer hidden"
-               checked={contaSelecionada.visivelNoSaldo ?? true}
-               onChange={(e) =>
-                 setContaSelecionada({
-                   ...contaSelecionada,
-                   visivelNoSaldo: e.target.checked,
-                 })
-               }
-             />
-             <label
-               htmlFor="visivel-no-saldo"
-               className="w-5 h-5 border-2 border-purple-500 rounded-md flex items-center justify-center peer-checked:bg-purple-500 peer-checked:border-purple-500 transition-colors cursor-pointer"
-             >
-               <svg
-                 className="w-3 h-3 text-white hidden peer-checked:block"
-                 fill="none"
-                 stroke="currentColor"
-                 strokeWidth="3"
-                 viewBox="0 0 24 24"
+              <input
+                type="checkbox"
+                id="visivel-no-saldo"
+                className="peer hidden"
+                checked={contaSelecionada.visivelNoSaldo ?? true}
+                onChange={(e) =>
+                  setContaSelecionada({
+                    ...contaSelecionada,
+                    visivelNoSaldo: e.target.checked,
+                  })
+                }
+              />
+              <label
+                htmlFor="visivel-no-saldo"
+                className="w-5 h-5 border-2 border-purple-500 rounded-md flex items-center justify-center peer-checked:bg-purple-500 peer-checked:border-purple-500 transition-colors cursor-pointer"
+              >
+                <svg
+                  className="w-3 h-3 text-white hidden peer-checked:block"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  viewBox="0 0 24 24"
                 >
-                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-               </svg>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
               </label>
-             <label htmlFor="visivel-no-saldo" className="cursor-pointer">
-               Mostrar no saldo total
+              <label htmlFor="visivel-no-saldo" className="cursor-pointer">
+                Mostrar no saldo total
               </label>
             </div>
+            {(contaSelecionada as any)?.tipoConta === 'investimento' && (
+              <div className="flex text-sm items-center text-gray-800 font-semibold gap-2 mb-4">
+                <input
+                  type="checkbox"
+                  id="show-invest-card"
+                  className="peer hidden"
+                  checked={showInvestCard}
+                  onChange={(e)=> setShowInvestCard(e.target.checked)}
+                />
+                <label
+                  htmlFor="show-invest-card"
+                  className="w-5 h-5 border-2 border-purple-500 rounded-md flex items-center justify-center peer-checked:bg-purple-500 peer-checked:border-purple-500 transition-colors cursor-pointer"
+                >
+                  <svg
+                    className="w-3 h-3 text-white hidden peer-checked:block"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </label>
+                <label htmlFor="show-invest-card" className="cursor-pointer">Exibir card Investimentos</label>
+              </div>
+            )}
 
             <div className="mt-4 gap-2 flex justify-between">
               <button

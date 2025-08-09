@@ -9,6 +9,7 @@ import "dayjs/locale/pt-br";
 import CardReceitas from "@/components/cards/CardReceitas";
 import CardDespesas from "@/components/cards/CardDespesas";
 import CardResultado from "@/components/cards/CardResultado";
+import CardInvestimentos from "@/components/cards/CardInvestimentos";
 import EntityModal from "@/components/modals/EntityModal";
 import CartoesList from "@/components/cards/CardCartoes";
 import ContasList from "@/components/cards/CardContas";
@@ -116,7 +117,8 @@ const months = useMemo(() => {
           <CardReceitas mes={months[currentIndex].month()} ano={months[currentIndex].year()} />
           <CardDespesas mes={months[currentIndex].month()} ano={months[currentIndex].year()} />
         </div>
-        <CardResultado mes={months[currentIndex].month()} ano={months[currentIndex].year()} />
+  <CardResultado mes={months[currentIndex].month()} ano={months[currentIndex].year()} />
+  <CardInvestimentos />
       </div>
 
       <CartoesList

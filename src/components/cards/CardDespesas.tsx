@@ -45,16 +45,14 @@ export default function CardDespesas({ mes, ano }: { mes: number; ano: number })
         let soma = 0;
 
         snapshot.forEach((doc) => {
-          const data = doc.data();
+          const data: any = doc.data();
           const dataTransacao = data.data?.toDate?.();
-          if (
-            data.type === "despesa" &&
-            dataTransacao &&
-            dataTransacao.getMonth() === mes &&
-            dataTransacao.getFullYear() === ano
-          ) {
-            soma += Number(data.valor) || 0;
-          }
+          if(!dataTransacao) return;
+          if(dataTransacao.getMonth()!==mes || dataTransacao.getFullYear()!==ano) return;
+          if(data.type !== 'despesa') return;
+          // Ignora compras feitas via cartão (cartaoId presente); considera apenas o pagamento de fatura (categoria pagamento_cartao ou tipoEspecial)
+          if(data.cartaoId) return;
+          soma += Number(data.valor)||0;
         });
 
         setTotal(soma);

@@ -1,15 +1,14 @@
 "use client";
-import { useState } from "react";
-import Modal from "../../components/ui/Modal"; // caminho correto do seu modal
+import dynamic from 'next/dynamic';
 
-export default function TestModal() {
-  const [open, setOpen] = useState(false);
+// Carrega dinamicamente para evitar problemas de SSR com chart.js
+const ChartsDashboard = dynamic(()=> import('@/components/grafics/ChartsDashboard'), { ssr:false });
+
+export default function GraficsPage(){
   return (
-    <>
-      <button onClick={() => setOpen(true)}>Abrir Modal</button>
-      <Modal open={open} onClose={() => setOpen(false)} title="Teste">
-        <p>Conteúdo do modal visível</p>
-      </Modal>
-    </>
+    <div className="mt-4 mb-20">
+      <h1 className="text-lg font-semibold px-4 text-gray-800">Gráficos</h1>
+      <ChartsDashboard />
+    </div>
   );
 }
