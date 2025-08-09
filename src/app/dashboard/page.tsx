@@ -55,8 +55,7 @@ const months = useMemo(() => {
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      console.log("Usuário autenticado:", user);
+  const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
         setContas([]);
         setCartoes([]);

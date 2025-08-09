@@ -48,17 +48,24 @@ export function TransactionForm({ tipo, transacao, onSaved, onClose }: Props) {
             </label>
           )}
           {tipo === 'despesa' && (
-            <div className="grid grid-cols-2 gap-3">
-              <label className="block text-sm font-semibold text-gray-700">Cartão (parcelado)
+            <div className="flex flex-col gap-3">
+              <label className="block text-sm font-semibold text-gray-700">Cartão
                 <select value={values.cartaoId || ''} onChange={e=>update('cartaoId', e.target.value)} className="mt-1 w-full p-2 border-2 border-purple-500 rounded-2xl focus:outline-0">
                   <option value="">(Sem cartão)</option>
                   {cartoes.map(c=> <option key={c.id} value={c.id}>{c.nome}</option>)}
                 </select>
               </label>
               {values.cartaoId && (
-                <label className="block text-sm font-semibold text-gray-700">Parcelas
-                  <input type="number" min={1} value={values.parcelas || 1} onChange={e=>update('parcelas', Number(e.target.value))} className="mt-1 w-full p-2 border-2 border-purple-500 rounded-2xl focus:outline-0" />
-                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="block text-sm font-semibold text-gray-700">Parcelas totais
+                    <input type="number" min={1} value={values.parcelas || 1} onChange={e=>update('parcelas', Number(e.target.value))} className="mt-1 w-full p-2 border-2 border-purple-500 rounded-2xl focus:outline-0" />
+                  </label>
+                  {values.parcelas && values.parcelas>1 && (
+                    <label className="block text-sm font-semibold text-gray-700">Parcela atual
+                      <input type="number" min={1} max={values.parcelas} value={values.parcelaInicio || 1} onChange={e=>update('parcelaInicio', Number(e.target.value))} className="mt-1 w-full p-2 border-2 border-purple-500 rounded-2xl focus:outline-0" />
+                    </label>
+                  )}
+                </div>
               )}
             </div>
           )}

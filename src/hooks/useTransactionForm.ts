@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Timestamp, collection, getDocs, doc, writeBatch, getDoc } from 'firebase/firestore';
+import dayjs from 'dayjs';
 import { db, auth } from '@/app/lib/firebaseConfig';
 import { dateStringToTimestamp, timestampToDateInput } from '@/utils/date';
 
@@ -15,6 +16,7 @@ interface BaseValues {
   contaDestino?: string;
   cartaoId?: string; // se despesa em cartão
   parcelas?: number; // número de parcelas
+  parcelaInicio?: number; // opcional: iniciar a partir desta parcela (1 = padrão)
   valorBase?: number; // valor unitário salvo (parcela) se parcelado
   valorTotal?: number; // valor total (opcional para exibição)
   valorModo?: 'parcela' | 'total';
@@ -45,6 +47,7 @@ export function useTransactionForm({ transacao, tipo, onSaved, onClose }: UseTra
     subcategoria: transacao?.subcategoria || '',
   cartaoId: transacao?.cartaoId || '',
   parcelas: transacao?.parcelas || 1,
+  parcelaInicio: 1,
   valorBase: transacao?.valorBase || (transacao?.valor ? Number(transacao.valor): undefined),
   valorTotal: transacao?.valorTotal,
   valorModo: 'parcela',
@@ -96,6 +99,26 @@ export function useTransactionForm({ transacao, tipo, onSaved, onClose }: UseTra
     })();
   }, [tipo]);
 
+  // Ajustar automaticamente a data quando iniciando em parcela posterior para garantir que caia no ciclo atual
+  useEffect(()=>{
+    if(!values.cartaoId) return;
+    if(!values.parcelaInicio || values.parcelaInicio <=1) return;
+    const cartao = cartoes.find(c=> c.id === values.cartaoId);
+    if(!cartao) return;
+    const diaFech = cartao.diaFechamento;
+    if(!diaFech) return;
+    const hoje = dayjs();
+    // mesma lógica de ciclo usada em CardCartoes
+    const fechamentoAnterior = hoje.date() > diaFech ? hoje.date(diaFech) : hoje.subtract(1,'month').date(diaFech);
+    const inicioCiclo = fechamentoAnterior.add(1,'day').startOf('day');
+    const dataAtualForm = dayjs(values.data + 'T00:00:00');
+    if(dataAtualForm.isBefore(inicioCiclo)){
+      // Ajusta para hoje (ou para inicioCiclo se preferir alinhar)
+      const novaData = hoje.isBefore(inicioCiclo) ? inicioCiclo : hoje;
+      update('data', novaData.format('YYYY-MM-DD'));
+    }
+  }, [values.cartaoId, values.parcelaInicio, values.data, cartoes]);
+
   function update<K extends keyof BaseValues>(key: K, value: BaseValues[K]) {
     setValues(v => ({ ...v, [key]: value }));
   }
@@ -111,6 +134,7 @@ export function useTransactionForm({ transacao, tipo, onSaved, onClose }: UseTra
   if (!values.cartaoId && !values.conta) return 'Conta obrigatória';
       if (!values.categoria) return 'Categoria obrigatória';
   if (values.cartaoId && (!values.parcelas || values.parcelas < 1)) return 'Parcelas inválidas';
+  if (values.cartaoId && values.parcelas && values.parcelaInicio && (values.parcelaInicio < 1 || values.parcelaInicio > values.parcelas)) return 'Parcela atual inválida';
     }
     return null;
   }
@@ -175,17 +199,24 @@ export function useTransactionForm({ transacao, tipo, onSaved, onClose }: UseTra
         // criação
         if (tipo === 'despesa' && values.cartaoId && (values.parcelas||1) > 1) {
           const totalParcelas = values.parcelas || 1;
+          const startParcela = values.parcelaInicio && values.parcelaInicio >=1 && values.parcelaInicio <= totalParcelas ? values.parcelaInicio : 1;
           const perParcelaValor = base.valor; // já ajustado acima conforme modo
           const batch = writeBatch(db);
-          const baseDate = new Date(values.data + 'T12:00:00');
+          const providedDate = new Date(values.data + 'T12:00:00'); // data digitada no form
+          // Ajuste: se estamos começando da parcela N>1, a data fornecida representa a parcela N.
+          // Então a data da parcela 1 (virtual / não criada) seria providedDate - (N-1) meses.
+          const baseDateForCalc = new Date(providedDate);
+          if (startParcela > 1) {
+            baseDateForCalc.setMonth(baseDateForCalc.getMonth() - (startParcela - 1));
+          }
+          const originalDay = baseDateForCalc.getDate();
           const purchaseId = (typeof crypto !== 'undefined' && 'randomUUID' in crypto) ? (crypto as any).randomUUID() : 'p_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
-          for (let i=1; i<= totalParcelas; i++) {
+          for (let i=startParcela; i<= totalParcelas; i++) {
             const refParc = doc(colRef);
-            const dateClone = new Date(baseDate);
-            dateClone.setMonth(baseDate.getMonth() + (i-1));
-            // ajustar overflow de dia (ex: 31 em meses menores)
-            if (dateClone.getDate() !== baseDate.getDate()) {
-              // caiu no overflow, usar último dia do mês resultante
+            const dateClone = new Date(baseDateForCalc);
+            dateClone.setMonth(baseDateForCalc.getMonth() + (i-1));
+            // ajustar overflow de dia (ex: 31 em meses menores) mantendo lógica de último dia
+            if (dateClone.getDate() !== originalDay) {
               const lastDay = new Date(dateClone.getFullYear(), dateClone.getMonth()+1, 0).getDate();
               dateClone.setDate(lastDay);
             }
@@ -198,12 +229,21 @@ export function useTransactionForm({ transacao, tipo, onSaved, onClose }: UseTra
               valorBase: perParcelaValor,
               valorTotal: base.valorModo === 'total' ? base.valorTotal : (totalParcelas>1 ? perParcelaValor * totalParcelas : perParcelaValor),
               purchaseId,
+              // Guardar referência opcional da data-base calculada (primeira parcela teórica) pode ser útil futuramente
+              basePurchaseDate: Timestamp.fromDate(baseDateForCalc),
               paid: false,
             });
           }
           await batch.commit();
+          // Notificar UI para recalcular faturas de cartões
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('recalcular-faturas-cartoes'));
+          }
         } else {
           await (await import('firebase/firestore')).addDoc(colRef, base);
+          if (values.cartaoId && typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('recalcular-faturas-cartoes'));
+          }
         }
       }
       onSaved?.();

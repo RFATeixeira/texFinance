@@ -64,7 +64,11 @@ export default function CartoesList({ onAdd, showAll, setShowAll }: Props) {
   const [userId, setUserId] = useState<string | null>(null);
 
   // cache simples por cartao para valores da fatura atual
-  const [faturas, setFaturas] = useState<Record<string,{atual:number; pagos:number; aberto:number; status:string|null; limiteUso:number; parcelasPagas:number; totalParcelas:number}>>({});
+  const [faturas, setFaturas] = useState<Record<string,{
+    pagarTotal:number; pagarAberto:number; pagarParcelas:number; pagarParcelasPagas:number;
+    proximaTotal:number; proximaParcelas:number;
+    limiteUso:number; status:string|null;
+  }>>({});
 
   useEffect(() => {
     let unsubscribeSnapshot = () => {};
@@ -108,34 +112,62 @@ export default function CartoesList({ onAdd, showAll, setShowAll }: Props) {
     if(!userId || cartoes.length===0) { setFaturas({}); return; }
     try {
       const hoje = dayjs();
-      const novo: Record<string,{atual:number; pagos:number; aberto:number; status:string|null; limiteUso:number; parcelasPagas:number; totalParcelas:number}> = {};
+      const novo: Record<string, any> = {};
       await Promise.all(cartoes.map(async cartao => {
         const cid = cartao.id!;
         const transQ = query(collection(db,'users', userId,'transacoes'), where('cartaoId','==', cid));
         const transSnap = await getDocs(transQ);
         const trans: any[] = []; transSnap.forEach(d=> trans.push({ id:d.id, ...d.data() }));
         const diaFech = cartao.diaFechamento; const diaVenc = cartao.diaVencimento;
-        // Regra ajustada: compras efetuadas no próprio dia de fechamento pertencem à PRÓXIMA fatura.
-        // Portanto, o ciclo atual vai do dia seguinte ao fechamento anterior (inclusive) até o dia de fechamento atual (exclusive).
-        const fechamentoAnterior = hoje.date() > diaFech ? hoje.date(diaFech) : hoje.subtract(1,'month').date(diaFech);
-        const proximoFechamento = fechamentoAnterior.add(1,'month');
-        const inicioCiclo = fechamentoAnterior.add(1,'day').startOf('day'); // inclusive
-        const fimCiclo = proximoFechamento.startOf('day'); // exclusive
-        const totalAtual = trans.reduce((acc,t)=>{ const dt = t.data?.toDate?.(); if(!dt) return acc; const djs = dayjs(dt); if((djs.isAfter(inicioCiclo) || djs.isSame(inicioCiclo)) && djs.isBefore(fimCiclo)){ if(t.type==='despesa') return acc + Number(t.valor||0);} return acc; },0);
+        // Definir fechamentoAtual (último fechamento ocorrido) e anterior
+        const fechamentoAtual = hoje.date() > diaFech ? hoje.date(diaFech) : hoje.subtract(1,'month').date(diaFech);
+        const fechamentoAnterior = fechamentoAtual.subtract(1,'month');
+        const fechamentoProximo = fechamentoAtual.add(1,'month');
+        // Ciclo fechado (fatura a pagar): (fechamentoAnterior+1 .. fechamentoAtual) exclusive do fechamentoAtual
+        const inicioFechado = fechamentoAnterior.add(1,'day').startOf('day');
+        const fimFechado = fechamentoAtual.startOf('day');
+        // Próximo ciclo (em formação): (fechamentoAtual+1 .. fechamentoProximo) exclusive do fechamentoProximo
+        const inicioAberto = fechamentoAtual.add(1,'day').startOf('day');
+        const fimAberto = fechamentoProximo.startOf('day');
+        let pagarTotal = 0, pagarAberto = 0, pagarParcelas = 0, pagarParcelasPagas = 0;
+        let proximaTotal = 0, proximaParcelas = 0;
+        trans.forEach(t=>{
+          const dt = t.data?.toDate?.(); if(!dt) return; const djs = dayjs(dt);
+            if((djs.isAfter(inicioFechado) || djs.isSame(inicioFechado)) && djs.isBefore(fimFechado) && t.type==='despesa') {
+              pagarTotal += Number(t.valor||0);
+              pagarParcelas += 1;
+              if(t.paid) pagarParcelasPagas +=1; else pagarAberto += Number(t.valor||0);
+            } else if((djs.isAfter(inicioAberto) || djs.isSame(inicioAberto)) && djs.isBefore(fimAberto) && t.type==='despesa') {
+              proximaTotal += Number(t.valor||0);
+              proximaParcelas +=1;
+            }
+        });
+        // Limite em uso = todas despesas não pagas (independente de ciclo)
         const limiteUso = trans.reduce((acc,t)=> (t.type==='despesa' && !t.paid) ? acc + Number(t.valor||0) : acc,0);
-        const totalParcelas = trans.filter(t=> t.type==='despesa').length;
-        const parcelasPagas = trans.filter(t=> t.type==='despesa' && t.paid).length;
-        const pagSnap = await getDocs(collection(db,'users', userId, 'cartoesCredito', cid, 'pagamentos'));
-        let totalPagos = 0; pagSnap.forEach(p=> { const pv = p.data(); const cm = (pv as any).cycleMonth ?? (pv as any).refMes; const cy = (pv as any).cycleYear ?? (pv as any).refAno; const cycleMonthRef = proximoFechamento.month(); const cycleYearRef = proximoFechamento.year(); if(cm === cycleMonthRef && cy === cycleYearRef){ totalPagos += Number(pv.valor)||0; } });
-        const aberto = Math.max(0, totalAtual - totalPagos);
-        let status: string | null = null; const diaHoje = hoje.date(); if(aberto===0) status='Sem débitos'; else if(diaHoje===diaFech) status='Cartão fecha hoje'; else if(diaHoje===diaVenc) status='Último dia para pagar'; else if(diaHoje>diaVenc) status='Fatura em atraso';
-        novo[cid] = { atual: totalAtual, pagos: totalPagos, aberto, status, limiteUso, parcelasPagas, totalParcelas };
+        // Status
+        let status: string | null = null; const diaHoje = hoje.date();
+        if(pagarAberto===0) status='Sem débitos';
+        if(pagarAberto>0){
+          if(diaHoje===diaFech) status='Cartão fechou hoje';
+          else if(diaHoje===diaVenc) status='Vencimento hoje';
+          else if(diaHoje>diaVenc) status='Fatura em atraso';
+          else if(!status) status='Fatura aberta';
+        }
+        novo[cid] = { pagarTotal, pagarAberto, pagarParcelas, pagarParcelasPagas, proximaTotal, proximaParcelas, limiteUso, status };
       }));
       setFaturas(novo);
     } catch(e){ console.error('Erro ao calcular faturas', e); }
   }
 
   useEffect(()=> { computeFaturas(); }, [userId, cartoes]);
+  // Recalcular faturas quando evento global for emitido
+  useEffect(()=>{
+    function handler(){ computeFaturas(); }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('recalcular-faturas-cartoes', handler as any);
+    }
+    return ()=> { if (typeof window !== 'undefined') window.removeEventListener('recalcular-faturas-cartoes', handler as any); };
+  }, [userId, cartoes]);
   useEffect(()=>{ // carregar contas
     async function carregar(){ if(!userId){ setContas([]); return;} const snap = await getDocs(collection(db,'users', userId,'contas')); setContas(snap.docs.map(d=> ({ id:d.id, ...d.data()}))); }
     carregar();
@@ -185,8 +217,8 @@ export default function CartoesList({ onAdd, showAll, setShowAll }: Props) {
                 const fechamentoDate = getAdjustedDate(cartao.diaFechamento);
                 const vencimentoDate = getAdjustedDate(cartao.diaVencimento);
                 const melhorDiaCompra = getBestPurchaseDay(cartao.diaFechamento, cartao.diaVencimento);
-                const faturaInfo = faturas[cartao.id||''] || { atual:0, pagos:0, aberto:0, status:null, limiteUso:0, parcelasPagas:0, totalParcelas:0 };
-                const aberto = faturaInfo.aberto; // valor a pagar
+                const faturaInfo = faturas[cartao.id||''] || { pagarAberto:0, pagarTotal:0, pagarParcelas:0, pagarParcelasPagas:0, proximaTotal:0, proximaParcelas:0, limiteUso:0, status:null };
+                const aberto = faturaInfo.pagarAberto; // valor a pagar da fatura fechada
                 const status = faturaInfo.status;
                 const limiteUsoPercent = cartao.limite>0 ? Math.min(100, (faturaInfo.limiteUso / cartao.limite)*100) : 0;
                 return (
@@ -220,15 +252,19 @@ export default function CartoesList({ onAdd, showAll, setShowAll }: Props) {
                       </div>
                     </div>
 
-                    <div className="mt-4 flex gap-2 items-center">
-                      <p className="text-xs text-gray-500">Fatura atual</p>
-                      <p className="text-sm font-bold">
-                        <span className="text-xs">R$</span> {formatarValorVisibilidade(aberto, mostrarValores)}
-                      </p>
+                    <div className="mt-4 flex flex-col gap-1">
+                      <div className="flex gap-2 items-center">
+                        <p className="text-xs text-gray-500">Fatura a pagar</p>
+                        <p className="text-sm font-bold"><span className="text-xs">R$</span> {formatarValorVisibilidade(faturaInfo.pagarAberto, mostrarValores)}</p>
+                      </div>
+                      <div className="flex gap-2 items-center">
+                        <p className="text-xs text-gray-500">Próxima fatura</p>
+                        <p className="text-sm font-bold"><span className="text-xs">R$</span> {formatarValorVisibilidade(faturaInfo.proximaTotal, mostrarValores)}</p>
+                      </div>
+                      {(faturaInfo.pagarParcelas>0 || faturaInfo.proximaParcelas>0) && (
+                        <p className="text-[0.65rem] text-gray-500">Parcelas (fechada): <span className="font-semibold">{faturaInfo.pagarParcelasPagas}/{faturaInfo.pagarParcelas}</span> · (próxima): {faturaInfo.proximaParcelas}</p>
+                      )}
                     </div>
-                    {faturaInfo.totalParcelas>0 && (
-                      <p className="mt-1 text-[0.65rem] text-gray-500">Parcelas pagas: <span className="font-semibold">{faturaInfo.parcelasPagas}/{faturaInfo.totalParcelas}</span></p>
-                    )}
 
                     <div className="mt-2 text-xs text-gray-500 space-y-1">
                       <p>
