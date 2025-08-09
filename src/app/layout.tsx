@@ -20,6 +20,7 @@ export default function RootLayout({
     <html lang="pt-br">
       <link rel="manifest" href="/manifest.json" />
       <meta name="theme-color" content="#ffffff/97" />
+      <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
       <body className={`${comfortaa.className} bg-white/97 text-gray-800`}>
         <PullToRefresh>
           <ToastProvider>

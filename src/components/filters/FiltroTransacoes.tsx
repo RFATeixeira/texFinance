@@ -63,6 +63,8 @@ export default function FiltroTransacoes({
         <option value={30}>30 dias</option>
         <option value={45}>45 dias</option>
         <option value={90}>90 dias</option>
+  <option value={180}>180 dias</option>
+  <option value={360}>360 dias</option>
       </select>
 
       <button

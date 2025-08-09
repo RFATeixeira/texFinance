@@ -38,8 +38,8 @@ export default function CardResultado({ mes, ano }: { mes: number; ano: number }
       const anoAnterior = mes === 0 ? ano - 1 : ano;
 
       snapshot.forEach((doc) => {
-        const data = doc.data();
-        const dataTransacao = data.data?.toDate?.();
+        const data: any = doc.data();
+        const dataTransacao: Date | undefined = data.data?.toDate?.();
         const valor = Number(data.valor) || 0;
         const nomeConta = data.conta;
         const contaVisivel = nomeConta ? contasVisibilidadeMap[nomeConta] ?? true : true;
@@ -49,12 +49,26 @@ export default function CardResultado({ mes, ano }: { mes: number; ano: number }
         const tMes = dataTransacao.getMonth();
         const tAno = dataTransacao.getFullYear();
 
+        // Regras:
+        // 1. Compras no cartão (despesas com cartaoId) NÃO entram no resultado (somente quando a fatura é paga).
+        // 2. Pagamento de fatura (categoria 'pagamento_cartao' ou tipoEspecial 'pagamentoCartao' ou presença de cartaoPagamentoId) entra como despesa.
+        const isCompraCartao = data.type === 'despesa' && !!data.cartaoId;
+        const isPagamentoFatura = data.type === 'despesa' && (data.categoria === 'pagamento_cartao' || data.tipoEspecial === 'pagamentoCartao' || !!data.cartaoPagamentoId);
+
         if (tMes === mes && tAno === ano) {
-          if (data.type === "receita") receitasAtual += valor;
-          else if (data.type === "despesa") despesasAtual += valor;
+          if (data.type === 'receita') {
+            receitasAtual += valor;
+          } else if (data.type === 'despesa') {
+            if (isCompraCartao && !isPagamentoFatura) return; // ignora compra parcelada/compra simples de cartão
+            despesasAtual += valor;
+          }
         } else if (tMes === mesAnterior && tAno === anoAnterior) {
-          if (data.type === "receita") receitasAnterior += valor;
-          else if (data.type === "despesa") despesasAnterior += valor;
+          if (data.type === 'receita') {
+            receitasAnterior += valor;
+          } else if (data.type === 'despesa') {
+            if (isCompraCartao && !isPagamentoFatura) return;
+            despesasAnterior += valor;
+          }
         }
       });
 

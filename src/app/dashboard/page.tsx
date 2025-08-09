@@ -27,16 +27,14 @@ dayjs.locale("pt-br");
 
 const months = useMemo(() => {
   const today = dayjs();
-  return [
-    today.subtract(2, "month"),
-    today.subtract(1, "month"),
-    today,
-    today.add(1, "month"),
-    today.add(2, "month"),
-  ];
+  const list: dayjs.Dayjs[] = [];
+  for (let i = 4; i > 0; i--) list.push(today.subtract(i, 'month'));
+  list.push(today);
+  for (let i = 1; i <= 4; i++) list.push(today.add(i, 'month'));
+  return list; // ordem cronológica: -4 .. hoje .. +4
 }, []);
 
-  const [currentIndex, setCurrentIndex] = useState(2); // sempre aponta pro "hoje" no centro do array gerado
+  const [currentIndex, setCurrentIndex] = useState(4); // índice do mês atual (posição central)
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isContaModalOpen, setIsContaModalOpen] = useState(false);
@@ -81,30 +79,24 @@ const months = useMemo(() => {
     <div className="min-h-screen bg-white/97 pb-24 px-4">
       <Header />
 
-      {/* Seletor de Meses */}
+      {/* Seletor de Meses (janela: anterior / atual / próximo) */}
       <section className="bg-white h-10 mt-6 px-4 rounded-2xl flex items-center justify-between drop-shadow-lg">
         <div className="flex gap-4 justify-center items-center w-full">
-          {[-1, 0, 1].map((offset) => {
+          {[-1,0,1].map(offset => {
             const index = currentIndex + offset;
+            if(index < 0 || index >= months.length) return null;
             const isSelected = offset === 0;
-            if (index < 0 || index >= months.length) return null;
-
             const handleClick = () => {
-              if (offset === -1) handlePrev();
-              if (offset === 1) handleNext();
+              if(offset === -1) handlePrev();
+              if(offset === 1) handleNext();
             };
-
             return (
               <span
                 key={index}
                 onClick={!isSelected ? handleClick : undefined}
-                className={`h-10 px-4 flex items-center py-1 rounded-3xl cursor-pointer transition ${
-                  isSelected
-                    ? "text-gray-800 text-md font-semibold bg-gray-100 cursor-default"
-                    : "text-gray-400 hover:text-gray-600 text-sm"
-                }`}
+                className={`h-10 px-4 flex items-center py-1 rounded-3xl cursor-pointer transition ${isSelected ? 'text-gray-800 text-md font-semibold bg-gray-100 cursor-default' : 'text-gray-400 hover:text-gray-600 text-sm'}`}
               >
-                {months[index].format("MMM/YY")}
+                {months[index].format('MMM/YY')}
               </span>
             );
           })}
