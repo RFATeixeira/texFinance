@@ -132,7 +132,10 @@ export default function ChartsDashboard(){
 
   return (
     <div className="flex flex-col gap-6 p-4 overflow-x-hidden">
-      <div className="sticky top-0 left-0 right-0 z-30 -mx-4 px-4 pt-3 pb-3 bg-white/95 backdrop-blur flex flex-wrap gap-4 items-end border-b border-purple-100 shadow-xl">
+      <div
+        className="sticky top-0 z-30 -mx-4 px-4 pt-3 pb-3 bg-white/95 backdrop-blur flex flex-wrap gap-4 items-end border-b border-purple-100 shadow-xl"
+        style={{ paddingLeft: 'max(env(safe-area-inset-left),1rem)', paddingRight: 'max(env(safe-area-inset-right),1rem)' }}
+      >
         <label className="text-xs font-semibold text-gray-600 flex flex-col">
           Mês
           <select value={mes} onChange={e=> setMes(e.target.value)} className="mt-1 border-2 border-purple-500 rounded-xl px-2 py-1 text-sm bg-white">

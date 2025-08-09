@@ -19,6 +19,27 @@ body {
   font-family: sans-serif;
 }
 
+/* Normalizar input date no iOS (remover zoom visual / aparência estreita) */
+input[type="date"],
+input[type="month"],
+input[type="time"] {
+  -webkit-appearance: none;
+  appearance: none;
+  line-height: 1.2;
+  font-size: 16px; /* evita zoom automático do iOS < 16 para campos menores */
+}
+
+/* Ajuste interno dos pseudo elementos do date no WebKit */
+input[type="date"]::-webkit-date-and-time-value { min-height: 1.2em; }
+input[type="date"]::-webkit-datetime-edit { padding: 0; }
+input[type="date"]::-webkit-datetime-edit-fields-wrapper { display: flex; }
+input[type="date"]::-webkit-datetime-edit-text { padding: 0 2px; }
+input[type="date"]::-webkit-datetime-edit-year-field,
+input[type="date"]::-webkit-datetime-edit-month-field,
+input[type="date"]::-webkit-datetime-edit-day-field { padding: 0 2px; }
+input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: .6; }
+input[type="date"]:hover::-webkit-calendar-picker-indicator { opacity: .9; }
+
 /* Checkboxes roxos unificados */
 input[type=checkbox].purple-checkbox {
   width: 18px;
