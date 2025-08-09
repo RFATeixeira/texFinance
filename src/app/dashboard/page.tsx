@@ -9,8 +9,7 @@ import "dayjs/locale/pt-br";
 import CardReceitas from "@/components/cards/CardReceitas";
 import CardDespesas from "@/components/cards/CardDespesas";
 import CardResultado from "@/components/cards/CardResultado";
-import AddCartaoModal from "@/components/modals/ModalAddCartao";
-import AddContaModal from "@/components/modals/ModalAddConta";
+import EntityModal from "@/components/modals/EntityModal";
 import CartoesList from "@/components/cards/CardCartoes";
 import ContasList from "@/components/cards/CardContas";
 
@@ -40,6 +39,7 @@ const months = useMemo(() => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isContaModalOpen, setIsContaModalOpen] = useState(false);
+  const [entityModal, setEntityModal] = useState<{open:boolean; type: 'conta'|'cartao'|'ambiente'|null}>({open:false,type:null});
   const [cartoes, setCartoes] = useState<Cartao[]>([]);
   const [contas, setContas] = useState<Conta[]>([]);
 
@@ -120,28 +120,21 @@ const months = useMemo(() => {
       </div>
 
       <CartoesList
-        onAdd={() => setIsModalOpen(true)} // ← correto, abre o modal de cartão ✅
+        onAdd={() => setEntityModal({open:true,type:'cartao'})} // substituído
         showAll={false}
         setShowAll={() => {}} // aqui você pode implementar corretamente depois
       />
 
       <ContasList
-      onAdd={() => setIsContaModalOpen(true)}
+      onAdd={() => setEntityModal({open:true,type:'conta'})}
       />
 
-      <AddCartaoModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSave={handleSaveCartao}
-      />
-
-      <AddContaModal
-        isOpen={isContaModalOpen}
-        onClose={() => setIsContaModalOpen(false)}
-        onSave={(novaConta) => {
-          setContas((prev) => [...prev, novaConta]);
-          setIsContaModalOpen(false);
-        }}
+      {/* Removidos AddCartaoModal e AddContaModal em favor do EntityModal */}
+      <EntityModal
+        open={entityModal.open && !!entityModal.type}
+        type={entityModal.type as any}
+        onClose={() => setEntityModal({open:false,type:null})}
+        onSaved={() => setEntityModal({open:false,type:null})}
       />
     </div>
   );

@@ -19,12 +19,13 @@ import {
 import { useRouter } from "next/navigation";
 import { FiTrash } from "react-icons/fi";
 
-import ModalAdicionarPessoa from "@/components/modals/ModalAdicionarPessoa";
-import ModalAddAmbiente from "@/components/modals/ModalAddAmbiente";
-import ModalConfirmarExclusao from "@/components/modals/ModalConfirmarExclusao";
-import ModalGerenciarPessoa from "@/components/modals/ModalGerenciarPessoa";
+import EntityEditModal from "@/components/modals/EntityEditModal";
+import ConfirmModal from "@/components/modals/ConfirmModal";
+import EntityModal from "@/components/modals/EntityModal";
+import MembersManageModal from "@/components/modals/MembersManageModal";
 
 import type { Ambiente, Membro } from "../../../app/types/types";
+import { collection as fsCollection, query as fsQuery, where as fsWhere, getDocs as fsGetDocs, setDoc as fsSetDoc } from "firebase/firestore";
 
 export default function AmbientesPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -34,13 +35,11 @@ export default function AmbientesPage() {
   const [isModalAddAmbienteOpen, setIsModalAddAmbienteOpen] = useState(false);
   const [modalAddPessoaOpen, setModalAddPessoaOpen] = useState(false);
 
-  // Novos estados para modais de exclusão e gerenciar pessoas
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [idParaExcluir, setIdParaExcluir] = useState<string | null>(null);
 
   const [gerenciarPessoasOpen, setGerenciarPessoasOpen] = useState(false);
 
-  // Estados NOVOS para modal singular de edição de pessoa
   const [editarPessoaOpen, setEditarPessoaOpen] = useState(false);
   const [pessoaSelecionada, setPessoaSelecionada] = useState<Membro | null>(null);
 
@@ -332,41 +331,60 @@ export default function AmbientesPage() {
 
       {/* Modal Adicionar Ambiente */}
       {user && (
-        <ModalAddAmbiente
-          isOpen={isModalAddAmbienteOpen}
+        <EntityModal
+          open={isModalAddAmbienteOpen}
+          type="ambiente"
           onClose={() => setIsModalAddAmbienteOpen(false)}
         />
       )}
 
       {/* Modal Adicionar Pessoa — sem onAdicionar, pois o modal faz o convite direto */}
       {modalAddPessoaOpen && ambienteSelecionado && (
-        <ModalAdicionarPessoa
-          isOpen={modalAddPessoaOpen}
-          onClose={() => {
-            setModalAddPessoaOpen(false);
-            setAmbienteSelecionado(null);
+        <EntityEditModal
+          open={modalAddPessoaOpen}
+          kind="membroEmail"
+          onClose={() => { setModalAddPessoaOpen(false); setAmbienteSelecionado(null); }}
+          onSave={async ({ email }) => {
+            if (!email || !ambienteSelecionado || !user) return;
+            try {
+              const usersRef = fsCollection(db, 'users');
+              const q = fsQuery(usersRef, fsWhere('email', '==', email));
+              const snap = await fsGetDocs(q);
+              if (snap.empty) { alert('Usuário não encontrado'); return; }
+              const userDoc = snap.docs[0];
+              const convidadoId = userDoc.id;
+              // verifica se já é membro
+              const jaMembro = (ambienteSelecionado.membros||[]).some(m=>m.uid===convidadoId);
+              if (jaMembro) { alert('Usuário já é membro'); return; }
+              await fsSetDoc(doc(db,'ambiences',ambienteSelecionado.id,'membros',convidadoId),{ uid: convidadoId, nome: userDoc.data().nome || 'Usuário'});
+              // atualizar estado local
+              setAmbientes(prev=> prev.map(a=> a.id===ambienteSelecionado.id ? { ...a, membros:[...(a.membros||[]), { uid: convidadoId, nome: userDoc.data().nome || 'Usuário'}] } : a));
+            } catch(e){ console.error(e); alert('Erro ao adicionar membro'); }
           }}
-          ambiente={ambienteSelecionado}
         />
       )}
 
       {/* Modal Confirmar Exclusão */}
       {confirmDeleteOpen && (
-        <ModalConfirmarExclusao
-          mensagem="Tem certeza que deseja excluir este ambiente?"
-          onClose={() => setConfirmDeleteOpen(false)}
-          onConfirmar={confirmarExclusao}
+        <ConfirmModal
+          open={confirmDeleteOpen}
+          message="Tem certeza que deseja excluir este ambiente?"
+          onCancel={() => setConfirmDeleteOpen(false)}
+          onConfirm={confirmarExclusao}
         />
       )}
 
       {/* Modal Gerenciar Pessoas (plural) */}
       {ambienteSelecionado && (
-        <ModalGerenciarPessoa
-          isOpen={gerenciarPessoasOpen}
-          onClose={() => setGerenciarPessoasOpen(false)}
+        <MembersManageModal
+          open={gerenciarPessoasOpen}
           ambiente={ambienteSelecionado}
-          onRemoverMembro={handleRemoverMembro}
-          onEditarMembro={handleEditarMembro}
+          onClose={() => setGerenciarPessoasOpen(false)}
+          isOwner={user?.uid === ambienteSelecionado.criador}
+          onMembersChanged={(membros)=>{
+            setAmbientes(prev=> prev.map(a=> a.id===ambienteSelecionado.id ? { ...a, membros } : a));
+            setAmbienteSelecionado(prev=> prev ? { ...prev, membros } : prev);
+          }}
         />
       )}
     </div>

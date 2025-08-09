@@ -9,6 +9,7 @@ import { collection, onSnapshot, query } from "firebase/firestore";
 import { db, auth } from "../../app/lib/firebaseConfig";
 import { onAuthStateChanged } from "firebase/auth";
 import Modal from "@/components/ui/Modal";
+import { formatarValorVisibilidade } from '@/utils/saldoInvisivel';
 
 type Props = {
   onAdd: () => void;
@@ -35,6 +36,7 @@ export default function CartoesList({ onAdd, showAll, setShowAll }: Props) {
 
   const [cartaoSelecionado, setCartaoSelecionado] = useState<Cartao | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [mostrarValores, setMostrarValores] = useState(true);
 
   useEffect(() => {
     let unsubscribeSnapshot = () => {};
@@ -61,6 +63,14 @@ export default function CartoesList({ onAdd, showAll, setShowAll }: Props) {
       unsubscribeAuth();
       unsubscribeSnapshot();
     };
+  }, []);
+
+  useEffect(()=>{
+    const stored = localStorage.getItem('mostrarValores');
+    if(stored!==null) setMostrarValores(stored==='true');
+    function handler(e:any){ setMostrarValores(e.detail.visivel); }
+    window.addEventListener('visibilidade-valores', handler as any);
+    return ()=> window.removeEventListener('visibilidade-valores', handler as any);
   }, []);
 
   return (
@@ -118,7 +128,7 @@ export default function CartoesList({ onAdd, showAll, setShowAll }: Props) {
                     <div className="mt-4 flex gap-2 items-center">
                       <p className="text-xs text-gray-500">Fatura atual</p>
                       <p className="text-sm font-bold">
-                        <span className="text-xs">R$</span> 0,00
+                        <span className="text-xs">R$</span> {formatarValorVisibilidade(0, mostrarValores)}
                       </p>
                     </div>
 
@@ -152,7 +162,7 @@ export default function CartoesList({ onAdd, showAll, setShowAll }: Props) {
                         R$ <span className="text-sm font-semibold">0,00</span>
                       </span>
                       <span>
-                        R$ <span className="text-sm font-semibold">{cartao.limite.toFixed(2)}</span>
+                        R$ <span className="text-sm font-semibold">{formatarValorVisibilidade(cartao.limite, mostrarValores)}</span>
                       </span>
                     </div>
                   </div>

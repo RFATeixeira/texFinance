@@ -16,6 +16,7 @@ import {
   doc,
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
+import { formatarValorVisibilidade } from '@/utils/saldoInvisivel';
 
 type Props = {
   onAdd: () => void;
@@ -41,6 +42,7 @@ export default function ContasList({ onAdd }: Props) {
   const [contaSelecionada, setContaSelecionada] = useState<Conta | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [userUid, setUserUid] = useState<string | null>(null);
+  const [mostrarValores, setMostrarValores] = useState(true);
 
   useEffect(() => {
   let unsubscribeContas = () => {};
@@ -123,6 +125,14 @@ export default function ContasList({ onAdd }: Props) {
     setEditModalOpen(false);
   };
 
+  useEffect(()=>{
+    const stored = localStorage.getItem('mostrarValores');
+    if(stored!==null) setMostrarValores(stored==='true');
+    function handler(e:any){ setMostrarValores(e.detail.visivel); }
+    window.addEventListener('visibilidade-valores', handler as any);
+    return ()=> window.removeEventListener('visibilidade-valores', handler as any);
+  }, []);
+
   return (
     <>
       <section className="mt-4 px-3 py-3 gap-3 flex flex-col bg-white rounded-2xl drop-shadow-lg">
@@ -160,7 +170,7 @@ export default function ContasList({ onAdd }: Props) {
                      </div>
                      <div>
                         <p className="text-xs text-gray-500">Conta bancária</p>
-                        <p className="text-sm font-semibold text-gray-800">Conta {conta.nome}</p>
+                        <p className="text-sm font-semibold text-gray-800">{conta.nome}</p>
                      </div>
                     </div>
                     {conta.visivelNoSaldo === false && (
@@ -171,7 +181,7 @@ export default function ContasList({ onAdd }: Props) {
                 <div className="flex justify-between mt-2">
                   <p className="text-xs text-gray-500">Saldo atual</p>
                   <p className="text-sm font-bold text-gray-800">
-                    R$ {saldo.toFixed(2)}
+                    R$ {formatarValorVisibilidade(saldo, mostrarValores)}
                   </p>
                 </div>
               </div>

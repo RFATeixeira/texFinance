@@ -5,10 +5,12 @@ import { auth, db } from "../../app/lib/firebaseConfig";
 import { collection, getDocs } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { FaDollarSign } from "react-icons/fa";
+import { formatarValorVisibilidade } from "@/utils/saldoInvisivel";
 
 export default function CardDespesas({ mes, ano }: { mes: number; ano: number }) {
   const [total, setTotal] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
+  const [mostrarValores, setMostrarValores] = useState(true);
 
   // Escuta o usuário autenticado
   useEffect(() => {
@@ -21,6 +23,16 @@ export default function CardDespesas({ mes, ano }: { mes: number; ano: number })
     });
 
     return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("mostrarValores");
+    if (stored !== null) setMostrarValores(stored === "true");
+    function handler(e: any) {
+      setMostrarValores(e.detail.visivel);
+    }
+    window.addEventListener("visibilidade-valores", handler as any);
+    return () => window.removeEventListener("visibilidade-valores", handler as any);
   }, []);
 
   // Busca despesas após obter userId
@@ -65,7 +77,7 @@ export default function CardDespesas({ mes, ano }: { mes: number; ano: number })
         <p className="text-[0.7rem] text-gray-600 font-semibold">Despesas</p>
         <p className="text-gray-800 font-bold text-sm">
           <span className="text-gray-600 text-[0.7rem]">R$ </span>
-          {total.toFixed(2)}
+          {formatarValorVisibilidade(total, mostrarValores)}
         </p>
       </div>
     </div>

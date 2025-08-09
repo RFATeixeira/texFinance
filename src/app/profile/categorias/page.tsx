@@ -14,8 +14,7 @@ import {
   deleteDoc,
 } from "firebase/firestore";
 import { onAuthStateChanged, User } from "firebase/auth";
-import ModalCategoria from "../../../components/modals/ModalCategoria";
-import ModalSubcategoria from "../../../components/modals/ModalSubCategoria";
+import EntityEditModal from "@/components/modals/EntityEditModal";
 
 type CategoriaType = {
   id: string;
@@ -225,54 +224,51 @@ export default function CategoriasPage() {
       </div>
 
       {user && modalCategoria && (
-        <ModalCategoria
-           isOpen={!!modalCategoria}
-           onClose={() => setModalCategoria(null)}
-           initialData={
-             modalCategoria.id ? { nome: modalCategoria.nome, icone: modalCategoria.emoji } : undefined
-           }
-           onSave={async ({ nome, icone }) => {
-             const id = modalCategoria.id || nome.toLowerCase().replace(/\s/g, "-");
-             await setDoc(doc(db, "users", user!.uid, "categorias", id), {
-               nome,
-               emoji: icone,
-               subcategorias: modalCategoria.subcategorias ?? [],
-               fixed: false,
-             });
-             setModalCategoria(null);
-           }}
-           onDelete={
-             modalCategoria.id
-               ? async () => {
-                   try {
-                     await deleteDoc(doc(db, "users", user.uid, "categorias", modalCategoria.id));
-                     setModalCategoria(null);
-                    } catch (error) {
-                     console.error("Erro ao deletar categoria:", error);
-                    }
+        <EntityEditModal
+          open={!!modalCategoria}
+          kind="categoria"
+          onClose={() => setModalCategoria(null)}
+          initialData={
+            modalCategoria.id ? { nome: modalCategoria.nome, icone: modalCategoria.emoji } : undefined
+          }
+          onSave={async ({ nome, icone }) => {
+            const id = modalCategoria.id || nome.toLowerCase().replace(/\s/g, "-");
+            await setDoc(doc(db, "users", user!.uid, "categorias", id), {
+              nome,
+              emoji: icone,
+              subcategorias: modalCategoria.subcategorias ?? [],
+              fixed: false,
+            });
+            setModalCategoria(null);
+          }}
+          onDelete={
+            modalCategoria.id
+              ? async () => {
+                  try {
+                    await deleteDoc(doc(db, "users", user.uid, "categorias", modalCategoria.id));
+                    setModalCategoria(null);
+                  } catch (error) {
+                    console.error("Erro ao deletar categoria:", error);
                   }
-                : undefined
-            }
-
-            user={user}
-            categoriaId={modalCategoria.id} // ✅ Aqui está a correção!
-          />
+                }
+              : undefined
+          }
+        />
       )}
 
       {user && modalSubcategoria && (
-       <ModalSubcategoria
-         isOpen={!!modalSubcategoria}
-         onClose={() => setModalSubcategoria(null)}
-         categoriaId={modalSubcategoria.categoriaId}
-         subcategoria={modalSubcategoria.subcategoria}
-         initialData={
-           modalSubcategoria.subcategoria
-             ? { nome: modalSubcategoria.subcategoria.nome, icone: modalSubcategoria.subcategoria.emoji }
-             : undefined
-         }
-         onSave={async ({ nome, icone }) => {
-           const catDocRef = doc(db, "users", user!.uid, "categorias", modalSubcategoria.categoriaId);
-           const docSnap = await getDoc(catDocRef);
+        <EntityEditModal
+          open={!!modalSubcategoria}
+          kind="subcategoria"
+          onClose={() => setModalSubcategoria(null)}
+          initialData={
+            modalSubcategoria.subcategoria
+              ? { nome: modalSubcategoria.subcategoria.nome, icone: modalSubcategoria.subcategoria.emoji }
+              : undefined
+          }
+          onSave={async ({ nome, icone }) => {
+            const catDocRef = doc(db, "users", user!.uid, "categorias", modalSubcategoria.categoriaId);
+            const docSnap = await getDoc(catDocRef);
             const catData = docSnap.data();
 
             const subcategorias = catData?.subcategorias || [];
@@ -281,23 +277,25 @@ export default function CategoriasPage() {
                   s.nome === modalSubcategoria.subcategoria?.nome ? { nome, emoji: icone } : s
                 )
               : [...subcategorias, { nome, emoji: icone }];
-              
+
             await updateDoc(catDocRef, { subcategorias: updated });
             setModalSubcategoria(null);
           }}
-           onDelete={async () => {
-            // código para deletar a subcategoria no Firestore
-            const catDocRef = doc(db, "users", user!.uid, "categorias", modalSubcategoria.categoriaId);
-            const docSnap = await getDoc(catDocRef);
-            const catData = docSnap.data();
+          onDelete={
+            modalSubcategoria.subcategoria
+              ? async () => {
+                  const catDocRef = doc(db, "users", user!.uid, "categorias", modalSubcategoria.categoriaId);
+                  const docSnap = await getDoc(catDocRef);
+                  const catData = docSnap.data();
 
-            const subcategorias = catData?.subcategorias || [];
-            const filtered = subcategorias.filter((s: { nome: string | undefined; }) => s.nome !== modalSubcategoria.subcategoria?.nome);
+                  const subcategorias = catData?.subcategorias || [];
+                  const filtered = subcategorias.filter((s: { nome: string | undefined }) => s.nome !== modalSubcategoria.subcategoria?.nome);
 
-            await updateDoc(catDocRef, { subcategorias: filtered });
-            setModalSubcategoria(null);
-          }}
-          user={user}
+                  await updateDoc(catDocRef, { subcategorias: filtered });
+                  setModalSubcategoria(null);
+                }
+              : undefined
+          }
         />
       )}
 

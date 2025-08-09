@@ -1,6 +1,6 @@
 "use client";
 
-import { FaTags, FaSignOutAlt, FaUsers  } from "react-icons/fa";
+import { FaTags, FaSignOutAlt, FaUsers, FaUserCog } from "react-icons/fa";
 import { HiChevronRight } from "react-icons/hi";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -83,6 +83,18 @@ export default function ProfilePage() {
          <HiChevronRight className="text-purple-500 text-2xl" />
 
         </div>
+
+        {/* Card Configurações */}
+        <div
+         onClick={() => router.push("/profile/configuracoes")}
+         className="cursor-pointer bg-white rounded-2xl p-6 shadow-lg hover:shadow-2xl transition flex items-center justify-between"
+       >
+         <div className="flex flex-row items-center gap-2">
+           <FaUserCog className="text-purple-500 text-3xl" />
+           <p className="text-lg font-semibold">Configurações</p>
+         </div>
+         <HiChevronRight className="text-purple-500 text-2xl" />
+       </div>
       </div>
     </div>
   );

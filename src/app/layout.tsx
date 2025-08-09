@@ -2,6 +2,7 @@ import "./globals.css";
 import { Comfortaa } from "next/font/google";
 import ClientLayout from "../components/ClientLayout";
 import PullToRefresh from "@/utils/PullToRefresh";
+import { ToastProvider } from "@/components/ui/ToastProvider";
 
 const comfortaa = Comfortaa({ subsets: ["latin"], weight: ["400", "700"] });
 
@@ -21,7 +22,9 @@ export default function RootLayout({
       <meta name="theme-color" content="#ffffff/97" />
       <body className={`${comfortaa.className} bg-white/97 text-gray-800`}>
         <PullToRefresh>
-          <ClientLayout>{children}</ClientLayout>
+          <ToastProvider>
+            <ClientLayout>{children}</ClientLayout>
+          </ToastProvider>
         </PullToRefresh>
       </body>
     </html>

@@ -8,6 +8,7 @@ import {
   DocumentData,
 } from "firebase/firestore";
 import { FaDollarSign } from "react-icons/fa";
+import { formatarValorVisibilidade } from '@/utils/saldoInvisivel';
 
 interface CardDespesasAmbienteProps {
   ambienteId: string;
@@ -28,6 +29,7 @@ export default function CardDespesasAmbiente({
   membro,
 }: CardDespesasAmbienteProps) {
   const [total, setTotal] = useState(0);
+  const [mostrarValores, setMostrarValores] = useState(true);
 
   useEffect(() => {
     const fetchDespesas = async () => {
@@ -100,6 +102,14 @@ export default function CardDespesasAmbiente({
     fetchDespesas();
   }, [ambienteId, mes, ano, modo, membro]);
 
+  useEffect(()=>{
+    const stored = localStorage.getItem('mostrarValores');
+    if(stored!==null) setMostrarValores(stored==='true');
+    function handler(e:any){ setMostrarValores(e.detail.visivel); }
+    window.addEventListener('visibilidade-valores', handler as any);
+    return ()=> window.removeEventListener('visibilidade-valores', handler as any);
+  }, []);
+
   const titulo =
     modo === "total"
       ? "Despesas Totais"
@@ -114,7 +124,7 @@ export default function CardDespesasAmbiente({
         <p className="text-[0.7rem] text-gray-600 font-semibold">{titulo}</p>
         <p className="text-gray-800 font-bold text-sm">
           <span className="text-gray-600 text-[0.7rem]">R$ </span>
-          {total.toFixed(2)}
+          {formatarValorVisibilidade(total, mostrarValores)}
         </p>
       </div>
     </div>

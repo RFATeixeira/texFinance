@@ -10,8 +10,9 @@ import {
   getDocs,
 } from "firebase/firestore";
 import { FaTimes } from "react-icons/fa";
+import { dateStringToTimestamp, timestampToDateInput } from "../../utils/date";
 
-
+// DEPRECATED: usar TransactionModal.
 export default function ModalTransferencia({
   transacao,
   onClose,
@@ -25,15 +26,13 @@ export default function ModalTransferencia({
   const [contaOrigem, setContaOrigem] = useState(transacao.contaOrigem || "");
   const [contaDestino, setContaDestino] = useState(transacao.contaDestino || "");
   const [data, setData] = useState(
-    transacao.data?.toDate
-      ? transacao.data.toDate().toISOString().split("T")[0]
-      : new Date().toISOString().split("T")[0]
+    timestampToDateInput(transacao.data)
   );
   const [contas, setContas] = useState<any[]>([]);
 
   const modalRef = useRef<HTMLDivElement>(null);
 
-   useEffect(() => {
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
         onClose();
@@ -72,7 +71,7 @@ export default function ModalTransferencia({
         valor: parseFloat(valor),
         contaOrigem,
         contaDestino,
-        data: Timestamp.fromDate(new Date(data)),
+        data: dateStringToTimestamp(data),
       });
       onAtualizar();
       onClose();

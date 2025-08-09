@@ -5,12 +5,14 @@ import { auth, db } from "../../app/lib/firebaseConfig";
 import { collection, getDocs } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { FaDollarSign } from "react-icons/fa";
+import { formatarValorVisibilidade } from '@/utils/saldoInvisivel';
 
 export default function CardReceitas({ mes, ano }: { mes: number; ano: number }) {
   const [total, setTotal] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
+  const [mostrarValores, setMostrarValores] = useState(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -61,6 +63,14 @@ export default function CardReceitas({ mes, ano }: { mes: number; ano: number })
     fetchReceitas();
   }, [userId, mes, ano]);
 
+  useEffect(()=>{
+    const stored = localStorage.getItem('mostrarValores');
+    if(stored!==null) setMostrarValores(stored==='true');
+    function handler(e:any){ setMostrarValores(e.detail.visivel); }
+    window.addEventListener('visibilidade-valores', handler as any);
+    return ()=> window.removeEventListener('visibilidade-valores', handler as any);
+  }, []);
+
   return (
     <div className="flex-1 bg-white p-3 rounded-2xl flex items-center gap-3 drop-shadow-lg">
       <div className="bg-green-100 p-2 rounded-md">
@@ -71,7 +81,7 @@ export default function CardReceitas({ mes, ano }: { mes: number; ano: number })
         
           <p className="text-gray-800 font-bold text-sm">
             <span className="text-gray-600 text-[0.7rem]">R$ </span>
-            {total.toFixed(2)}
+            {formatarValorVisibilidade(total, mostrarValores)}
           </p>
         
       </div>

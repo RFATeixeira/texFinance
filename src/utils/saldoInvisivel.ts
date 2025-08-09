@@ -7,12 +7,15 @@ import {
 } from "firebase/firestore";
 import { Transacao } from "@/app/types/types";
 
-export async function calcularSaldoContasInvisiveis(userId: string): Promise<number> {
+// Agora aceita opcionalmente mes e ano para retornar o saldo das contas invisíveis apenas daquele período.
+export async function calcularSaldoContasInvisiveis(userId: string, mes?: number, ano?: number): Promise<number> {
   const contasRef = collection(db, "users", userId, "contas");
   const transacoesRef = collection(db, "users", userId, "transacoes");
 
-  const contasSnapshot = await getDocs(contasRef);
-  const transacoesSnapshot = await getDocs(transacoesRef);
+  const [contasSnapshot, transacoesSnapshot] = await Promise.all([
+    getDocs(contasRef),
+    getDocs(transacoesRef),
+  ]);
 
   // Contas ocultas
   const contasInvisiveis = contasSnapshot.docs
@@ -24,16 +27,34 @@ export async function calcularSaldoContasInvisiveis(userId: string): Promise<num
     ...doc.data(),
   })) as Transacao[];
 
+  // Se mes e ano foram passados, filtrar as transações desse período
+  const transacoesFiltradas =
+    mes === undefined || ano === undefined
+      ? transacoes
+      : transacoes.filter((t) => {
+          const rawDate: any = (t as any).data?.toDate?.() ?? (t as any).data;
+          if (!(rawDate instanceof Date)) return false;
+          return rawDate.getMonth() === mes && rawDate.getFullYear() === ano;
+        });
+
   const soma = (lista: Transacao[]) =>
-    lista.reduce((acc, t) => acc + Number(t.valor || 0), 0);
+    lista.reduce((acc, t) => acc + Number((t as any).valor || 0), 0);
 
   let total = 0;
 
   contasInvisiveis.forEach((contaId) => {
-    const receitas = transacoes.filter(t => t.type === "receita" && t.conta === contaId);
-    const despesas = transacoes.filter(t => t.type === "despesa" && t.conta === contaId);
-    const transferenciasEnviadas = transacoes.filter(t => t.type === "transferencia" && t.contaOrigem === contaId);
-    const transferenciasRecebidas = transacoes.filter(t => t.type === "transferencia" && t.contaDestino === contaId);
+    const receitas = transacoesFiltradas.filter(
+      (t: any) => t.type === "receita" && t.conta === contaId
+    );
+    const despesas = transacoesFiltradas.filter(
+      (t: any) => t.type === "despesa" && t.conta === contaId
+    );
+    const transferenciasEnviadas = transacoesFiltradas.filter(
+      (t: any) => t.type === "transferencia" && t.contaOrigem === contaId
+    );
+    const transferenciasRecebidas = transacoesFiltradas.filter(
+      (t: any) => t.type === "transferencia" && t.contaDestino === contaId
+    );
 
     const saldoConta =
       soma(receitas) -
@@ -45,4 +66,11 @@ export async function calcularSaldoContasInvisiveis(userId: string): Promise<num
   });
 
   return total;
+}
+
+export function formatarValorVisibilidade(valor: number, visivel: boolean): string {
+  if (visivel) return valor.toFixed(2);
+  // máscara mantendo comprimento aproximado
+  const base = valor.toFixed(2);
+  return base.replace(/[0-9]/g, '*');
 }

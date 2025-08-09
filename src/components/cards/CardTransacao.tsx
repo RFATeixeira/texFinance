@@ -3,9 +3,7 @@
 import { useState, useEffect } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../../app/lib/firebaseConfig";
-import ModalTransferencia from "../modals/ModalTransacaoTransferencia";
-import ModalDespesa from "../modals/ModalTransacaoDespesa";
-import ModalReceita from "../modals/ModalTransacaoReceita";
+import { TransactionModal } from "@/components/transactions/TransactionModal";
 
 export default function CardTransacao({ transacao, onAtualizar }: { transacao: any;onAtualizar: () => void }) {
   const [open, setOpen] = useState(false);
@@ -77,37 +75,16 @@ export default function CardTransacao({ transacao, onAtualizar }: { transacao: a
         <div className="text-2xl">{emoji}</div>
       </div>
 
-        {open && tipo === "receita" && (
-         <ModalReceita
-            transacao={transacao}
-            onClose={() => setOpen(false)}
-            onAtualizar={() => {
-              setOpen(false);
-              onAtualizar();
-            }}
-          />
-        )}
-
-        {open && tipo === "transferencia" && (
-          <ModalTransferencia
-            transacao={transacao}
-            onClose={() => setOpen(false)}
-            onAtualizar={() => {
-             setOpen(false);
-             onAtualizar();
-            }}
-          />
-        )}
-        {open && tipo === "despesa" && (
-          <ModalDespesa
-            transacao={transacao}
-            onClose={() => setOpen(false)}
-            onAtualizar={() => {
-            setOpen(false);
-            onAtualizar();
-          }}
-         />
-        )}
+      <TransactionModal
+        open={open}
+        onClose={() => setOpen(false)}
+        tipo={tipo}
+        transacao={transacao}
+        onSaved={() => {
+          setOpen(false);
+          onAtualizar();
+        }}
+      />
     </>
   );
 }

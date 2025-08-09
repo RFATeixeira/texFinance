@@ -13,6 +13,7 @@ import {
 } from "firebase/firestore";
 import { auth, db } from "../../app/lib/firebaseConfig";
 import { FaTimes } from "react-icons/fa";
+import { dateStringToTimestamp } from "../../utils/date";
 
 type CategoriaType = {
   id: string;
@@ -75,7 +76,7 @@ export default function ModalReceita({ onClose }: ModalProps) {
       const dados: any = {
         categoria,
         subcategoria,
-        data: Timestamp.fromDate(new Date(data)),
+        data: dateStringToTimestamp(data),
         valor: Number(valor),
         descricao,
         observacoes,
