@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, startTransition } from "react";
 import { db } from "../../app/lib/firebaseConfig";
 import {
   collection,
@@ -103,9 +103,9 @@ export default function CardDespesasAmbiente({
   }, [ambienteId, mes, ano, modo, membro]);
 
   useEffect(()=>{
-    const stored = localStorage.getItem('mostrarValores');
+    const stored = typeof window!== 'undefined' ? localStorage.getItem('mostrarValores') : null;
     if(stored!==null) setMostrarValores(stored==='true');
-    function handler(e:any){ setMostrarValores(e.detail.visivel); }
+    function handler(e:any){ startTransition(()=> setMostrarValores(!!e.detail?.visivel)); }
     window.addEventListener('visibilidade-valores', handler as any);
     return ()=> window.removeEventListener('visibilidade-valores', handler as any);
   }, []);

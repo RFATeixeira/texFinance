@@ -70,7 +70,6 @@ export async function calcularSaldoContasInvisiveis(userId: string, mes?: number
 
 export function formatarValorVisibilidade(valor: number, visivel: boolean): string {
   if (visivel) return valor.toFixed(2);
-  // máscara mantendo comprimento aproximado
-  const base = valor.toFixed(2);
-  return base.replace(/[0-9]/g, '*');
+  // máscara fixa solicitada
+  return '****';
 }

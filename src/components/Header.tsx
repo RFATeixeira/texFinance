@@ -27,7 +27,10 @@ export default function Header() {
     setMostrarValores(v => {
       const novo = !v;
       localStorage.setItem('mostrarValores', String(novo));
-      window.dispatchEvent(new CustomEvent('visibilidade-valores', { detail: { visivel: novo } }));
+      // Defer para evitar setState em outros componentes durante este render
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('visibilidade-valores', { detail: { visivel: novo } }));
+      }, 0);
       return novo;
     });
   }

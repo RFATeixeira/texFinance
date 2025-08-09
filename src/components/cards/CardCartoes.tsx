@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, startTransition } from "react";
 import { FaPlus, FaCreditCard, FaRegCreditCard } from "react-icons/fa";
 import { SiMastercard } from "react-icons/si";
 import { Cartao } from "@/app/types/types";
@@ -66,9 +66,9 @@ export default function CartoesList({ onAdd, showAll, setShowAll }: Props) {
   }, []);
 
   useEffect(()=>{
-    const stored = localStorage.getItem('mostrarValores');
+    const stored = typeof window!== 'undefined' ? localStorage.getItem('mostrarValores') : null;
     if(stored!==null) setMostrarValores(stored==='true');
-    function handler(e:any){ setMostrarValores(e.detail.visivel); }
+    function handler(e:any){ startTransition(()=> setMostrarValores(!!e.detail?.visivel)); }
     window.addEventListener('visibilidade-valores', handler as any);
     return ()=> window.removeEventListener('visibilidade-valores', handler as any);
   }, []);

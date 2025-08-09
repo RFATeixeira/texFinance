@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, startTransition } from "react";
 import { auth, db } from "../../app/lib/firebaseConfig";
 import { collection, getDocs } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
@@ -64,9 +64,12 @@ export default function CardReceitas({ mes, ano }: { mes: number; ano: number })
   }, [userId, mes, ano]);
 
   useEffect(()=>{
-    const stored = localStorage.getItem('mostrarValores');
+    const stored = typeof window!== 'undefined' ? localStorage.getItem('mostrarValores') : null;
     if(stored!==null) setMostrarValores(stored==='true');
-    function handler(e:any){ setMostrarValores(e.detail.visivel); }
+    function handler(e:any){
+      const visivel = e.detail?.visivel;
+      startTransition(()=> setMostrarValores(!!visivel));
+    }
     window.addEventListener('visibilidade-valores', handler as any);
     return ()=> window.removeEventListener('visibilidade-valores', handler as any);
   }, []);
