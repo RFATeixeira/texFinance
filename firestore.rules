@@ -1,0 +1,66 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isOwner(userId) { return request.auth != null && request.auth.uid == userId; }
+
+  match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if false;
+
+      // Subcoleções específicas controladas abaixo
+      match /{colName}/{docId} {
+        allow read, list: if colNameAllowed(colName) && (isOwner(userId) || (colName == 'transacoes' && isDespesaAmbientePermitida()));
+        allow create: if isOwner(userId) && colNameAllowed(colName) && validateCreate(colName);
+        allow update: if isOwner(userId) && colNameAllowed(colName) && validateUpdate(colName);
+        allow delete: if isOwner(userId) && colNameAllowed(colName);
+      }
+
+  function colNameAllowed(c) { return c in ['transacoes','contas','categorias','cartoesCredito']; }
+  function validateCreate(col) { return (col != 'transacoes') || validTransacao(); }
+  function validateUpdate(col) { return (col != 'transacoes') || validTransacao(); }
+      function validTransacao() {
+        let d = request.resource.data;
+        return d.type in ['receita','despesa','transferencia']
+          && (d.valor is number) && d.valor >= 0
+          && (d.data is timestamp)
+          && (!(d.type == 'despesa' && d.cartaoId != null) || (d.cartaoId is string));
+      }
+      function isDespesaAmbientePermitida() {
+        return resource.data.type == 'despesa'
+          && resource.data.ambiente is string
+          && isAmbienteMember(resource.data.ambiente);
+      }
+    }
+
+    match /ambiences/{ambId} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update, delete: if signedIn() && resource.data.criador == request.auth.uid;
+
+      match /membros/{membroUid} {
+        allow read, get: if signedIn() && (membroUid == request.auth.uid || isAmbienteMember(ambId));
+        allow list: if signedIn() && isAmbienteMember(ambId);
+        allow create: if signedIn() && (request.auth.uid == membroUid || isAmbienteCreator(ambId));
+        allow update: if signedIn() && (request.auth.uid == membroUid || isAmbienteCreator(ambId));
+        allow delete: if signedIn() && (request.auth.uid == membroUid || isAmbienteCreator(ambId));
+      }
+
+      function isAmbienteCreator(a) {
+        return get(/databases/$(database)/documents/ambiences/$(a)).data.criador == request.auth.uid;
+      }
+      function isAmbienteMember(a) {
+        let amb = get(/databases/$(database)/documents/ambiences/$(a)).data;
+        return amb.criador == request.auth.uid
+          || (amb.membrosUids != null && request.auth.uid in amb.membrosUids)
+          || exists(/databases/$(database)/documents/ambiences/$(a)/membros/$(request.auth.uid));
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

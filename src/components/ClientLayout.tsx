@@ -14,9 +14,9 @@ export default function ClientLayout({
   const shouldHideNavbar = hideNavbarOnPaths.includes(pathname);
 
   return (
-    <>
+    <div className="md:pl-56 min-h-screen bg-white/97">
       {children}
       {!shouldHideNavbar && <Navbar />}
-    </>
+    </div>
   );
 }

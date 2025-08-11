@@ -36,11 +36,17 @@ export default function CardReceitas({ mes, ano }: { mes: number; ano: number })
         snapshot.forEach((doc) => {
           const data = doc.data();
           const dataTransacao = data.data?.toDate?.();
+          const categoriasIgnoradas = [
+            'aporte_investimento',
+            'resgate_investimento',
+            'resgate'
+          ];
           if (
             data.type === "receita" &&
             dataTransacao &&
             dataTransacao.getMonth() === mes &&
-            dataTransacao.getFullYear() === ano
+            dataTransacao.getFullYear() === ano &&
+            (!data.categoria || !categoriasIgnoradas.includes(data.categoria))
           ) {
             soma += Number(data.valor) || 0;
           }
@@ -75,7 +81,7 @@ export default function CardReceitas({ mes, ano }: { mes: number; ano: number })
   }, []);
 
   return (
-    <div className="flex-1 bg-white p-3 rounded-2xl flex items-center gap-3 drop-shadow-lg">
+  <div className="flex-1 bg-white p-3 rounded-2xl flex items-center gap-3 drop-shadow-lg md:h-24">
       <div className="bg-green-100 p-2 rounded-md">
         <FaDollarSign className="text-green-600" />
       </div>

@@ -47,11 +47,18 @@ export default function CardDespesas({ mes, ano }: { mes: number; ano: number })
         snapshot.forEach((doc) => {
           const data: any = doc.data();
           const dataTransacao = data.data?.toDate?.();
+          const categoriasIgnoradas = [
+            'aporte_investimento',
+            'resgate_investimento',
+            'resgate'
+          ];
           if(!dataTransacao) return;
           if(dataTransacao.getMonth()!==mes || dataTransacao.getFullYear()!==ano) return;
           if(data.type !== 'despesa') return;
           // Ignora compras feitas via cartão (cartaoId presente); considera apenas o pagamento de fatura (categoria pagamento_cartao ou tipoEspecial)
           if(data.cartaoId) return;
+          // Ignora transferências para investimento (aporte_investimento) e transferências de despesa com contaDestino
+          if((data.categoria && categoriasIgnoradas.includes(data.categoria)) || (data.categoria === 'aporte_investimento' && data.contaDestino)) return;
           soma += Number(data.valor)||0;
         });
 
@@ -65,7 +72,7 @@ export default function CardDespesas({ mes, ano }: { mes: number; ano: number })
   }, [userId, mes, ano]);
 
   return (
-    <div className="flex-1 bg-white p-3 rounded-2xl flex items-center gap-3 drop-shadow-lg">
+  <div className="flex-1 bg-white p-3 rounded-2xl flex items-center gap-3 drop-shadow-lg md:h-24">
       <div className="bg-red-100 p-2 rounded-md">
         <FaDollarSign className="text-red-600" />
       </div>

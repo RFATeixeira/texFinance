@@ -1,0 +1,13 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "ambiences",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "membrosUids", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "nome", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

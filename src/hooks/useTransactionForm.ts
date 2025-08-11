@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Timestamp, collection, getDocs, doc, writeBatch, getDoc } from 'firebase/firestore';
+import { Timestamp, collection, getDocs, doc, writeBatch, getDoc, query, where } from 'firebase/firestore';
 import dayjs from 'dayjs';
 import { db, auth } from '@/app/lib/firebaseConfig';
 import { dateStringToTimestamp, timestampToDateInput } from '@/utils/date';
@@ -38,20 +38,20 @@ export function useTransactionForm({ transacao, tipo, onSaved, onClose }: UseTra
   const [values, setValues] = useState<BaseValues>({
     id: transacao?.id,
     type: tipo,
-  valor: transacao ? String(transacao.valor) : '',
+    valor: transacao ? String(transacao.valor) : '',
     data: timestampToDateInput(transacao?.data) ?? new Date().toISOString().slice(0,10),
     conta: transacao?.conta || '',
     contaOrigem: transacao?.contaOrigem || '',
     contaDestino: transacao?.contaDestino || '',
     categoria: transacao?.categoria || '',
     subcategoria: transacao?.subcategoria || '',
-  cartaoId: transacao?.cartaoId || '',
-  parcelas: transacao?.parcelas || 1,
-  parcelaInicio: 1,
-  valorBase: transacao?.valorBase || (transacao?.valor ? Number(transacao.valor): undefined),
-  valorTotal: transacao?.valorTotal,
-  valorModo: 'parcela',
-  descricao: transacao?.descricao || '',
+    cartaoId: transacao?.cartaoId || '',
+    parcelas: transacao?.parcelas || 1,
+    parcelaInicio: transacao?.parcelaNumero || 1,
+    valorBase: transacao?.valorBase || (transacao?.valor ? Number(transacao.valor): undefined),
+    valorTotal: transacao?.valorTotal,
+    valorModo: 'parcela',
+    descricao: transacao?.descricao || '',
     ambiente: transacao?.ambiente || 'pessoal',
     ocultar: transacao?.ocultar || false,
   });
@@ -102,6 +102,8 @@ export function useTransactionForm({ transacao, tipo, onSaved, onClose }: UseTra
   // Ajustar automaticamente a data quando iniciando em parcela posterior para garantir que caia no ciclo atual
   useEffect(()=>{
     if(!values.cartaoId) return;
+    // Evita sobrescrever data escolhida ao EDITAR uma parcela existente
+    if(values.id) return;
     if(!values.parcelaInicio || values.parcelaInicio <=1) return;
     const cartao = cartoes.find(c=> c.id === values.cartaoId);
     if(!cartao) return;
@@ -153,19 +155,70 @@ export function useTransactionForm({ transacao, tipo, onSaved, onClose }: UseTra
 
     setLoading(true);
     try {
-      const base: any = {
-        type: tipo,
-  valor: Number(values.valor),
+      let tipoFinal = tipo;
+      let base: any = {
+        valor: Number(values.valor),
         data: dateStringToTimestamp(values.data),
-  descricao: values.descricao,
+        descricao: values.descricao,
         ocultar: values.ocultar,
         createdAt: Timestamp.now(),
       };
+      // Lógica especial para transferências envolvendo conta de investimento
       if (tipo === 'transferencia') {
-        base.contaOrigem = values.contaOrigem;
-        base.contaDestino = values.contaDestino;
+        // Buscar tipo das contas
+        const contaOrigemObj = contas.find(c => c.id === values.contaOrigem);
+        const contaDestinoObj = contas.find(c => c.id === values.contaDestino);
+        const origemInvest = contaOrigemObj?.tipoConta === 'investimento';
+        const destinoInvest = contaDestinoObj?.tipoConta === 'investimento';
+        const colRef = collection(db, 'users', uid, 'transacoes');
+        if (destinoInvest && !origemInvest) {
+          // Transferência para investimento: criar apenas uma transação do tipo transferencia
+          const transferencia = {
+            type: 'transferencia',
+            valor: Number(values.valor),
+            data: dateStringToTimestamp(values.data),
+            descricao: values.descricao,
+            ocultar: values.ocultar,
+            createdAt: Timestamp.now(),
+            contaOrigem: values.contaOrigem,
+            contaDestino: values.contaDestino,
+            categoria: 'aporte_investimento',
+            subcategoria: contaOrigemObj?.nome || '',
+          };
+          await (await import('firebase/firestore')).addDoc(colRef, transferencia);
+          onSaved?.();
+          onClose?.();
+          setLoading(false);
+          return;
+        } else if (origemInvest && !destinoInvest) {
+          // Resgate de investimento: criar apenas uma transação do tipo transferencia
+          const transferencia = {
+            type: 'transferencia',
+            valor: Number(values.valor),
+            data: dateStringToTimestamp(values.data),
+            descricao: values.descricao,
+            ocultar: values.ocultar,
+            createdAt: Timestamp.now(),
+            contaOrigem: values.contaOrigem,
+            contaDestino: values.contaDestino,
+            categoria: 'resgate_investimento',
+            subcategoria: contaOrigemObj?.nome || '',
+          };
+          await (await import('firebase/firestore')).addDoc(colRef, transferencia);
+          onSaved?.();
+          onClose?.();
+          setLoading(false);
+          return;
+        } else {
+          // Transferência normal
+          tipoFinal = 'transferencia';
+          base.contaOrigem = values.contaOrigem;
+          base.contaDestino = values.contaDestino;
+          base.type = tipoFinal;
+        }
       } else {
-  if (!values.cartaoId) base.conta = values.conta; // não salva conta se é compra em cartão
+        base.type = tipo;
+        if (!values.cartaoId) base.conta = values.conta; // não salva conta se é compra em cartão
         base.categoria = values.categoria;
         base.subcategoria = values.subcategoria;
         if (tipo === 'despesa') base.ambiente = values.ambiente;
@@ -192,9 +245,89 @@ export function useTransactionForm({ transacao, tipo, onSaved, onClose }: UseTra
 
       const colRef = collection(db, 'users', uid, 'transacoes');
       if (values.id) {
-        // update (não regera parcelas para simplificar)
+        // update, com possibilidade de reindexar/regenerar parcelas de cartão
         const ref = doc(db, 'users', uid, 'transacoes', values.id);
         await (await import('firebase/firestore')).updateDoc(ref, base);
+
+        // Se é despesa em cartão parcelada e usuário alterou parcela atual ou total de parcelas, ajustar série
+  if (base.type === 'despesa' && transacao?.cartaoId && ((transacao?.parcelas||0) > 1 || (values.parcelas||0) > 1)) {
+          const originalParcelas = transacao?.parcelas || 1;
+            const originalParcelaNumero = transacao?.parcelaNumero || 1;
+            const newParcelas = values.parcelas || 1;
+            const newParcelaNumero = values.parcelaInicio || 1;
+            const purchaseId = transacao?.purchaseId; // id comum das parcelas
+            // Apenas se houve alteração relevante
+            if (purchaseId && (originalParcelas !== newParcelas || originalParcelaNumero !== newParcelaNumero)) {
+              try {
+                const col = collection(db,'users', uid,'transacoes');
+                const q = query(col, where('purchaseId','==', purchaseId));
+                const snap = await getDocs(q);
+                const docs = snap.docs.map(d=> ({ id:d.id, ...(d.data() as any) }));
+                if (docs.length) {
+                  // Determinar baseDate
+                  let baseDate: Date | null = null;
+                  const anyWithBase = docs.find(d=> d.basePurchaseDate);
+                  if (anyWithBase?.basePurchaseDate?.toDate) baseDate = anyWithBase.basePurchaseDate.toDate();
+                  if (!baseDate) {
+                    // reconstrói a partir da menor data - (parcelaNumero -1) meses
+                    const min = docs.reduce((acc,d)=>{ const dt=d.data?.toDate?.(); if(!dt) return acc; if(!acc || dt<acc) return dt; return acc; }, null as Date | null);
+                    if (min) {
+                      const firstDoc = docs.find(d=> d.data?.toDate?.()?.getTime()===min.getTime());
+                      const pn = firstDoc?.parcelaNumero || 1;
+                      const bd = new Date(min);
+                      bd.setMonth(bd.getMonth() - (pn -1));
+                      baseDate = bd;
+                    }
+                  }
+                  if (!baseDate) baseDate = new Date(values.data + 'T12:00:00');
+                  // Regerar mapeamento
+                  // Mantém parcelas já pagas anteriores ao novo current sem alterar paid
+                  const batch = writeBatch(db);
+                  // Ordena docs por parcelaNumero atual
+                  docs.sort((a,b)=> (a.parcelaNumero||0)-(b.parcelaNumero||0));
+                  for (let i=1;i<=newParcelas;i++) {
+                    const targetDate = new Date(baseDate);
+                    targetDate.setMonth(baseDate.getMonth() + (i-1));
+                    const existing = docs[i-1]; // reutiliza documento na mesma posição
+                    if (existing) {
+                      batch.update(doc(db,'users',uid,'transacoes', existing.id), {
+                        parcelaNumero: i,
+                        parcelas: newParcelas,
+                        data: Timestamp.fromDate(targetDate),
+                        basePurchaseDate: Timestamp.fromDate(baseDate),
+                      });
+                    } else {
+                      // criar nova parcela (nova além das antigas)
+                      const newRef = doc(collection(db,'users', uid,'transacoes'));
+                      batch.set(newRef, {
+                        ...base,
+                        valor: base.valorBase || base.valor,
+                        valorBase: base.valorBase || base.valor,
+                        valorTotal: base.valorModo === 'total' ? base.valorTotal : (newParcelas>1 ? (base.valorBase||base.valor) * newParcelas : (base.valorBase||base.valor)),
+                        parcelaNumero: i,
+                        parcelas: newParcelas,
+                        data: Timestamp.fromDate(targetDate),
+                        basePurchaseDate: Timestamp.fromDate(baseDate),
+                        purchaseId,
+                        paid: false,
+                      });
+                    }
+                  }
+                  // Se novas parcelas < antigas, remover excedentes
+                  if (newParcelas < docs.length) {
+                    for (let j=newParcelas; j<docs.length; j++) {
+                      const toRemove = docs[j];
+                      batch.delete(doc(db,'users',uid,'transacoes', toRemove.id));
+                    }
+                  }
+                  await batch.commit();
+                  if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('recalcular-faturas-cartoes'));
+                  }
+                }
+              } catch(e) { console.error('Erro ao reajustar parcelas', e); }
+            }
+        }
       } else {
         // criação
         if (tipo === 'despesa' && values.cartaoId && (values.parcelas||1) > 1) {

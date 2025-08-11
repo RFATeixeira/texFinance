@@ -75,7 +75,7 @@ const months = useMemo(() => {
   }, [isModalOpen, isContaModalOpen]);
 
   return (
-    <div className="min-h-screen bg-white/97 pb-24 px-4">
+  <div className="min-h-screen bg-white/97 pb-24 px-4 md:px-8">
       <Header />
 
       {/* Seletor de Meses (janela: anterior / atual / próximo) */}
@@ -102,25 +102,34 @@ const months = useMemo(() => {
         </div>
       </section>
 
-      {/* Cards Fixos */}
-      <div className="sticky top-0 z-10 mt-2 pt-4 -mx-4 p-4 bg-white/97">
-        <div className="flex gap-2 justify-between">
-          <CardReceitas mes={months[currentIndex].month()} ano={months[currentIndex].year()} />
-          <CardDespesas mes={months[currentIndex].month()} ano={months[currentIndex].year()} />
-        </div>
-  <CardResultado mes={months[currentIndex].month()} ano={months[currentIndex].year()} />
-  <CardInvestimentos />
+  {/* Cards Fixos (sticky) - full bleed background */}
+  <div className="mt-4 -mx-4 md:-mx-8 sticky top-0 z-30">
+  <div className="bg-white/90 backdrop-blur-md border-b border-gray-100/70 py-3 px-4 md:px-8 grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2">
+      <div className="col-span-1">
+        <CardReceitas mes={months[currentIndex].month()} ano={months[currentIndex].year()} />
       </div>
+      <div className="col-span-1">
+        <CardDespesas mes={months[currentIndex].month()} ano={months[currentIndex].year()} />
+      </div>
+      <div className="col-span-2 md:col-span-1 lg:col-span-1">
+        <CardResultado mes={months[currentIndex].month()} ano={months[currentIndex].year()} />
+      </div>
+      <div className="col-span-2 md:col-span-1 lg:col-span-1">
+        <CardInvestimentos />
+      </div>
+    </div>
+  </div>
 
-      <CartoesList
+      <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        <CartoesList
         onAdd={() => setEntityModal({open:true,type:'cartao'})} // substituído
         showAll={false}
         setShowAll={() => {}} // aqui você pode implementar corretamente depois
-      />
-
-      <ContasList
-      onAdd={() => setEntityModal({open:true,type:'conta'})}
-      />
+        />
+        <ContasList
+          onAdd={() => setEntityModal({open:true,type:'conta'})}
+        />
+      </div>
 
       {/* Removidos AddCartaoModal e AddContaModal em favor do EntityModal */}
       <EntityModal

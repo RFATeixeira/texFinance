@@ -57,7 +57,7 @@ export default function CardInvestimentos() {
   if(!enabled) return null;
 
   return (
-    <div className="mt-2 bg-white px-3 py-3 rounded-2xl drop-shadow-lg flex justify-between items-center border border-purple-100">
+  <div className="mt-2 md:mt-0 bg-white px-3 py-3 rounded-2xl drop-shadow-lg flex justify-between items-center border border-purple-100 md:h-24">
       <div className="flex flex-row items-center gap-2">
         <div className="bg-purple-100 p-2 rounded-md">
           <FaChartLine className="text-purple-600" />

@@ -1,5 +1,8 @@
 import dayjs from "dayjs";
 import "dayjs/locale/pt-br";
+import { useEffect, useState } from 'react';
+import { db, auth } from '@/app/lib/firebaseConfig';
+import { doc, getDoc } from 'firebase/firestore';
 
 interface Transacao {
   id: string;
@@ -10,6 +13,8 @@ interface Transacao {
   descricao?: string;
   subcategoriaEmoji?: string;
   ambiente?: string;
+  categoria?: string;
+  subcategoria?: string;
   [key: string]: any;
 }
 
@@ -26,6 +31,7 @@ export default function DespesasPorUsuarioList({
   ordemDesc = true,
   ambienteAtual,
 }: DespesasPorUsuarioListProps) {
+  const [emojiCache, setEmojiCache] = useState<Record<string,string>>({});
   // 1. Junta todas as despesas numa lista só e filtra pelo ambiente atual
   const todasDespesas = Object.entries(despesasPorUsuario).flatMap(([uid, despesas]) =>
     despesas
@@ -59,6 +65,37 @@ export default function DespesasPorUsuarioList({
     const dataB = dayjs(b, "DD [de] MMMM [de] YYYY", "pt-br");
     return ordemDesc ? dataB.valueOf() - dataA.valueOf() : dataA.valueOf() - dataB.valueOf();
   });
+
+  // Carrega emojis ausentes (subcategoria -> categoria)
+  // Nota: busca de categorias de outros usuários removida para evitar erros de permissão.
+  useEffect(()=>{
+    (async()=>{
+      const updates: Record<string,string> = {};
+      const selfUid = auth.currentUser?.uid;
+      for (const d of despesasOrdenadas) {
+        const key = d.id;
+        if (emojiCache[key]) continue;
+        if (!d.categoria) continue;
+        if (d.uid !== selfUid) continue; // só tenta buscar categorias do próprio usuário
+        try {
+          const catRef = doc(db,'users', selfUid!, 'categorias', d.categoria);
+          const catSnap = await getDoc(catRef);
+          let emoji = '📁';
+          if (catSnap.exists()) {
+            const catData: any = catSnap.data();
+            const subs: any[] = catData.subcategorias || [];
+            if (d.subcategoria) {
+              const sub = subs.find((s:any)=> (s.nome||'').toLowerCase() === String(d.subcategoria).toLowerCase());
+              if (sub?.emoji) emoji = sub.emoji;
+            }
+            if (emoji==='📁' && (catData.emoji||catData.icone)) emoji = catData.emoji || catData.icone;
+          }
+          updates[key] = emoji;
+        } catch {/* ignora */}
+      }
+      if (Object.keys(updates).length) setEmojiCache(prev=> ({...prev, ...updates}));
+    })();
+  }, [despesasOrdenadas, emojiCache]);
 
   return (
     <div className="text-gray-800 space-y-6">
@@ -94,7 +131,7 @@ export default function DespesasPorUsuarioList({
 
                   {/* Direita */}
                   <div className="text-right">
-                    <p className="text-2xl">{d.subcategoriaEmoji || "💸"}</p>
+                    <p className="text-2xl">{emojiCache[d.id] || d.subcategoriaEmoji || "�"}</p>
                     <p className="text-xs text-gray-500">{nomeUsuario}</p>
                   </div>
                 </div>

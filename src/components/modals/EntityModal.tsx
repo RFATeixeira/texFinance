@@ -19,7 +19,6 @@ export default function EntityModal({ open, type, onClose, onSaved }: EntityModa
 
   // Conta
   const [contaNome, setContaNome] = useState('');
-  const [visivelNoSaldo, setVisivelNoSaldo] = useState(true);
   const [tipoConta, setTipoConta] = useState<'bancaria'|'investimento'|'vale_vr'|'vale_va'|'vale_vt'|'vale_saude'|'vale_educacao'|'vale_incentivo'>('bancaria');
   // removido checkbox de exibir card de investimentos para criação; ficará apenas na edição
   const [mostrarCardInvest, setMostrarCardInvest] = useState<boolean>(false); // legado (não exibido aqui)
@@ -47,7 +46,7 @@ export default function EntityModal({ open, type, onClose, onSaved }: EntityModa
 
   useEffect(() => {
     if (!open) {
-  setContaNome(''); setVisivelNoSaldo(true); setTipoConta('bancaria'); setMostrarCardInvest(false); setParentContaId('');
+  setContaNome(''); setTipoConta('bancaria'); setMostrarCardInvest(false); setParentContaId('');
       setCartaoNome(''); setBandeira(''); setLimite(0); setDiaFechamento(1); setDiaVencimento(1);
       setAmbienteNome(''); setIcone('🌿');
     }
@@ -82,9 +81,7 @@ export default function EntityModal({ open, type, onClose, onSaved }: EntityModa
     try {
       if (type === 'conta') {
         if (tipoConta === 'investimento' && !parentContaId) { alert('Selecione a conta principal para o investimento'); setLoading(false); return; }
-        // Força contas de investimento a não entrarem no saldo final
-        const finalVisivel = tipoConta === 'investimento' ? false : visivelNoSaldo;
-        const data: any = { nome: contaNome, visivelNoSaldo: finalVisivel, tipoConta };
+  const data: any = { nome: contaNome, tipoConta };
         if (tipoConta === 'investimento') data.parentId = parentContaId;
         const docRef = await addDoc(collection(db, 'users', user.uid, 'contas'), data);
         onSaved?.({ id: docRef.id, ...data });
@@ -147,9 +144,7 @@ export default function EntityModal({ open, type, onClose, onSaved }: EntityModa
               </select>
             </div>
           )}
-          <label className={`flex items-center gap-2 text-sm font-semibold ${isInvest? 'opacity-40 cursor-not-allowed':''}`}> 
-            <input type="checkbox" disabled={isInvest} checked={isInvest? false : visivelNoSaldo} onChange={e=>setVisivelNoSaldo(e.target.checked)} /> Mostrar no saldo total
-          </label>
+          {/* Checkbox de mostrar no saldo total removido */}
           {/* Checkbox de exibir card removido daqui; agora só no modal de edição */}
         </div>
       );

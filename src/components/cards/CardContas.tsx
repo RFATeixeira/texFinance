@@ -215,9 +215,6 @@ export default function ContasList({ onAdd }: Props) {
                           </p>
                         </div>
                       </div>
-                      {conta.visivelNoSaldo === false && (
-                        <p className="text-xs text-end text-gray-400 italic">Oculta no saldo</p>
-                      )}
                     </div>
                   </div>
                   <div className="flex justify-between mt-2">
@@ -246,9 +243,6 @@ export default function ContasList({ onAdd }: Props) {
                                   <p className="text-xs font-semibold text-gray-800">{child.nome}</p>
                                 </div>
                               </div>
-                              {child.visivelNoSaldo === false && (
-                                <p className="text-[10px] text-end text-gray-400 italic">Oculta</p>
-                              )}
                             </div>
                           </div>
                           <div className="flex justify-between mt-1">
@@ -288,37 +282,39 @@ export default function ContasList({ onAdd }: Props) {
               className="w-full border-2 border-purple-500 p-2 rounded-2xl my-2 focus:outline-0"
             />
 
-            <div className="flex text-sm items-center text-gray-800 font-semibold gap-2 mb-4">
-              <input
-                type="checkbox"
-                id="visivel-no-saldo"
-                className="peer hidden"
-                checked={contaSelecionada.visivelNoSaldo ?? true}
-                onChange={(e) =>
-                  setContaSelecionada({
-                    ...contaSelecionada,
-                    visivelNoSaldo: e.target.checked,
-                  })
-                }
-              />
-              <label
-                htmlFor="visivel-no-saldo"
-                className="w-5 h-5 border-2 border-purple-500 rounded-md flex items-center justify-center peer-checked:bg-purple-500 peer-checked:border-purple-500 transition-colors cursor-pointer"
-              >
-                <svg
-                  className="w-3 h-3 text-white hidden peer-checked:block"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                  viewBox="0 0 24 24"
+            {(contaSelecionada as any)?.tipoConta !== 'investimento' && (
+              <div className="flex text-sm items-center text-gray-800 font-semibold gap-2 mb-4">
+                <input
+                  type="checkbox"
+                  id="visivel-no-saldo"
+                  className="peer hidden"
+                  checked={contaSelecionada.visivelNoSaldo ?? true}
+                  onChange={(e) =>
+                    setContaSelecionada({
+                      ...contaSelecionada,
+                      visivelNoSaldo: e.target.checked,
+                    })
+                  }
+                />
+                <label
+                  htmlFor="visivel-no-saldo"
+                  className="w-5 h-5 border-2 border-purple-500 rounded-md flex items-center justify-center peer-checked:bg-purple-500 peer-checked:border-purple-500 transition-colors cursor-pointer"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              </label>
-              <label htmlFor="visivel-no-saldo" className="cursor-pointer">
-                Mostrar no saldo total
-              </label>
-            </div>
+                  <svg
+                    className="w-3 h-3 text-white hidden peer-checked:block"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </label>
+                <label htmlFor="visivel-no-saldo" className="cursor-pointer">
+                  Mostrar no saldo total
+                </label>
+              </div>
+            )}
             {(contaSelecionada as any)?.tipoConta === 'investimento' && (
               <div className="flex text-sm items-center text-gray-800 font-semibold gap-2 mb-4">
                 <input

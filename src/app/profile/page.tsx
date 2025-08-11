@@ -32,7 +32,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="max-w-md h-screen mx-auto p-4 bg-white/97 text-gray-800">
+    <div className="min-h-screen mx-auto p-4 md:p-8 bg-white/97 text-gray-800 w-full max-w-md md:max-w-full">
       {/* Dados do Usuário */}
       <div className="flex flex-row mb-8 justify-between items-center">
         <div className="flex flex-row gap-2">
@@ -57,44 +57,48 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
         {/* Card Categorias */}
         <div
-         onClick={() => router.push("/profile/categorias")}
-         className="cursor-pointer bg-white rounded-2xl p-6 shadow-lg hover:shadow-2xl transition flex items-center justify-between"
-       >
-         <div className="flex flex-row items-center gap-2">
-           <FaTags className="text-purple-500 text-3xl" />
-           <p className="text-lg font-semibold">Categorias</p>
-         </div>
-         <HiChevronRight className="text-purple-500 text-2xl" />
-
-       </div>
+          onClick={() => router.push("/profile/categorias")}
+          className="group cursor-pointer bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition flex items-center justify-between h-full"
+        >
+          <div className="flex flex-row items-center gap-3">
+            <span className="bg-purple-50 p-3 rounded-xl group-hover:bg-purple-100 transition">
+              <FaTags className="text-purple-500 text-2xl" />
+            </span>
+            <p className="text-base md:text-lg font-semibold">Categorias</p>
+          </div>
+          <HiChevronRight className="text-purple-400 text-2xl group-hover:translate-x-1 transition" />
+        </div>
 
        {/* Card Ambientes */}
-       <div
-         onClick={() => router.push("/profile/ambience")}
-         className="cursor-pointer bg-white rounded-2xl p-6 shadow-lg hover:shadow-2xl transition flex items-center justify-between"
-       >
-         <div className="flex flex-row items-center gap-2">
-           <FaUsers className="text-purple-500 text-3xl" />
-           <p className="text-lg font-semibold">Ambientes</p>
-         </div>
-         <HiChevronRight className="text-purple-500 text-2xl" />
-
+        <div
+          onClick={() => router.push("/profile/ambience")}
+          className="group cursor-pointer bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition flex items-center justify-between h-full"
+        >
+          <div className="flex flex-row items-center gap-3">
+            <span className="bg-purple-50 p-3 rounded-xl group-hover:bg-purple-100 transition">
+              <FaUsers className="text-purple-500 text-2xl" />
+            </span>
+            <p className="text-base md:text-lg font-semibold">Ambientes</p>
+          </div>
+          <HiChevronRight className="text-purple-400 text-2xl group-hover:translate-x-1 transition" />
         </div>
 
         {/* Card Configurações */}
         <div
-         onClick={() => router.push("/profile/configuracoes")}
-         className="cursor-pointer bg-white rounded-2xl p-6 shadow-lg hover:shadow-2xl transition flex items-center justify-between"
-       >
-         <div className="flex flex-row items-center gap-2">
-           <FaUserCog className="text-purple-500 text-3xl" />
-           <p className="text-lg font-semibold">Configurações</p>
-         </div>
-         <HiChevronRight className="text-purple-500 text-2xl" />
-       </div>
+          onClick={() => router.push("/profile/configuracoes")}
+          className="group cursor-pointer bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition flex items-center justify-between h-full"
+        >
+          <div className="flex flex-row items-center gap-3">
+            <span className="bg-purple-50 p-3 rounded-xl group-hover:bg-purple-100 transition">
+              <FaUserCog className="text-purple-500 text-2xl" />
+            </span>
+            <p className="text-base md:text-lg font-semibold">Configurações</p>
+          </div>
+          <HiChevronRight className="text-purple-400 text-2xl group-hover:translate-x-1 transition" />
+        </div>
       </div>
     </div>
   );

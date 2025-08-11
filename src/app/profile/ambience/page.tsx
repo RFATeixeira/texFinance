@@ -5,14 +5,10 @@ import { onAuthStateChanged, User } from "firebase/auth";
 import { auth, db } from "../../lib/firebaseConfig";
 import {
   collection,
-  onSnapshot,
   doc,
   deleteDoc,
-  query,
-  orderBy,
   updateDoc,
   addDoc,
-  where,
   getDoc,
   getDocs,
 } from "firebase/firestore";
@@ -68,19 +64,22 @@ export default function AmbientesPage() {
 
     for (const ambiente of ambientesRaw) {
       const membroDoc = await getDoc(doc(db, "ambiences", ambiente.id, "membros", firebaseUser.uid));
-      if (membroDoc.exists()) {
-        // Buscar membros da subcoleção para exibir no ambiente
-        const membrosSnapshot = await getDocs(collection(db, "ambiences", ambiente.id, "membros"));
-        const membros = membrosSnapshot.docs.map(membroDoc => ({
-          uid: membroDoc.id,
-          nome: membroDoc.data().nome || "Sem nome",
-        }));
-
-        ambientesFiltrados.push({
-          ...ambiente,
-          membros,
-        });
-      }
+      if (!membroDoc.exists()) continue;
+      // Buscar membros da subcoleção
+      const membrosSnapshot = await getDocs(collection(db, "ambiences", ambiente.id, "membros"));
+      const membrosRaw = membrosSnapshot.docs.map(m => ({ uid: m.id }));
+      // Buscar nomes atuais em paralelo
+      const membrosDetalhados = await Promise.all(membrosRaw.map(async (m)=>{
+        try {
+          const userDoc = await getDoc(doc(db,'users', m.uid));
+          if (userDoc.exists()) {
+            const dados = userDoc.data() as any;
+            return { uid: m.uid, nome: dados.nome || dados.displayName || 'Sem nome' };
+          }
+        } catch {}
+        return { uid: m.uid, nome: 'Sem nome' };
+      }));
+      ambientesFiltrados.push({ ...ambiente, membros: membrosDetalhados });
     }
 
     setAmbientes(ambientesFiltrados);
@@ -237,12 +236,12 @@ export default function AmbientesPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto p-4 text-gray-800">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Ambientes</h1>
+  <div className="w-full px-4 md:px-8 py-4 text-gray-800">
+      <div className="flex items-center mb-6 md:gap-3">
+        <h1 className="text-2xl font-bold flex items-center">Ambientes</h1>
         <button
           onClick={() => setIsModalAddAmbienteOpen(true)}
-          className="text-purple-500 text-4xl leading-none"
+          className="text-purple-500 text-4xl leading-none hover:text-purple-600 transition font-medium ml-auto md:ml-3"
           aria-label="Adicionar ambiente"
           type="button"
         >
@@ -255,14 +254,14 @@ export default function AmbientesPage() {
       ) : ambientes.length === 0 ? (
         <p className="text-center text-gray-500">Nenhum ambiente criado.</p>
       ) : (
-        <div className="space-y-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
           {ambientes.map((ambiente) => {
             const membros = ambiente.membros ?? [];
 
             return (
               <div
                 key={ambiente.id}
-                className="rounded-2xl p-4 bg-white shadow-2xl cursor-default"
+                className="rounded-2xl p-4 bg-white shadow-2xl cursor-default flex flex-col"
               >
                 <div className="flex justify-between items-center mb-2">
                   <div
@@ -302,27 +301,29 @@ export default function AmbientesPage() {
                   </p>
                 </div>
 
-                {membros.length === 0 ? (
-                  <p className="text-gray-500 text-xs italic">Nenhuma pessoa autorizada</p>
-                ) : (
-                  <div className="grid grid-cols-2 gap-4">
-                    {membros.map((membro) => (
-                      <div
-                        onClick={() => abrirModalGerenciarPessoas(ambiente)}
-                        title="Gerenciar pessoas"
-                        key={membro.uid}
-                        className="bg-gray-100 rounded-xl py-3 px-2 flex items-center justify-between cursor-pointer hover:bg-gray-200"
-                      >
-                        <span className="text-gray-800 text-sm overflow-hidden">{membro.nome}</span>
-                        {membro.uid === ambiente.criador && (
-                          <span title="Criador" className="text-xl">
-                            👑
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <div className="mt-2 flex-1">
+                  {membros.length === 0 ? (
+                    <p className="text-gray-500 text-xs italic">Nenhuma pessoa autorizada</p>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      {membros.map((membro) => (
+                        <div
+                          onClick={() => abrirModalGerenciarPessoas(ambiente)}
+                          title="Gerenciar pessoas"
+                          key={membro.uid}
+                          className="bg-gray-100 rounded-xl py-2 px-2 flex items-center justify-between cursor-pointer hover:bg-gray-200 text-xs"
+                        >
+                          <span className="text-gray-800 overflow-hidden truncate max-w-[70%]">{membro.nome}</span>
+                          {membro.uid === ambiente.criador && (
+                            <span title="Criador" className="text-base">
+                              👑
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}

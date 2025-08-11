@@ -6,6 +6,8 @@ import {
   collection,
   getDocs,
   DocumentData,
+  query,
+  where,
 } from "firebase/firestore";
 import { FaDollarSign } from "react-icons/fa";
 import { formatarValorVisibilidade } from '@/utils/saldoInvisivel';
@@ -33,72 +35,47 @@ export default function CardDespesasAmbiente({
 
   useEffect(() => {
     const fetchDespesas = async () => {
-  if (modo === "usuario" && !membro?.uid) return;
-  if (!ambienteId) return;
-
-  try {
-    let soma = 0;
-
-    if (modo === "usuario" && membro?.uid) {
-      const transacoesRef = collection(db, "users", membro.uid, "transacoes");
-      const snapshot = await getDocs(transacoesRef);
-
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        const dataTransacao = data.data?.toDate?.();
-
-        const isDespesa = data.type === "despesa";
-        const isMesEAno =
-          dataTransacao &&
-          dataTransacao.getMonth() === mes &&
-          dataTransacao.getFullYear() === ano;
-        const isDoAmbiente = data.ambiente === ambienteId;
-
-        if (isDespesa && isMesEAno && isDoAmbiente) {
-          const valor = Number(data.valor);
-          if (!isNaN(valor)) soma += valor;
-        }
-      });
-    }
-
-    if (modo === "total") {
-      const membrosRef = collection(db, "ambiences", ambienteId, "membros");
-      const membrosSnapshot = await getDocs(membrosRef);
-
-      for (const membroDoc of membrosSnapshot.docs) {
-        const membroData = membroDoc.data();
-        const uid = membroData.uid;
-        if (!uid) continue;
-
-        const transacoesRef = collection(db, "users", uid, "transacoes");
-        const transacoesSnapshot = await getDocs(transacoesRef);
-
-        transacoesSnapshot.forEach((doc) => {
-          const data = doc.data();
-          const dataTransacao = data.data?.toDate?.();
-
-          const isDespesa = data.type === "despesa";
-          const isMesEAno =
-            dataTransacao &&
-            dataTransacao.getMonth() === mes &&
-            dataTransacao.getFullYear() === ano;
-          const isDoAmbiente = data.ambiente === ambienteId;
-
-          if (isDespesa && isMesEAno && isDoAmbiente) {
-            const valor = Number(data.valor);
-            if (!isNaN(valor)) soma += valor;
+      if (modo === "usuario" && !membro?.uid) return;
+      if (!ambienteId) return;
+      try {
+        let soma = 0;
+        const prevMes = mes === 0 ? 11 : mes - 1;
+        const prevAno = mes === 0 ? ano - 1 : ano;
+        const processarDocs = (snap:any, isUsuario:boolean) => {
+          snap.forEach((d:any)=>{
+            const data = d.data();
+            if (data.type !== 'despesa') return;
+            if (data.categoria === 'pagamento_cartao' || data.tipoEspecial === 'pagamentoCartao' || data.tipoEspecial === 'pagamentoCartaoAggregate') return;
+            if (data.ambiente !== ambienteId) return;
+            const dt = data.data?.toDate?.(); if(!dt) return;
+            const m = dt.getMonth(); const y = dt.getFullYear();
+            const isCartao = !!data.cartaoId;
+            const match = isCartao ? (m===prevMes && y===prevAno) : (m===mes && y===ano);
+            if (match) {
+              const valor = Number(data.valor); if(!isNaN(valor)) soma += valor;
+            }
+          });
+        };
+        if (modo === 'usuario' && membro?.uid) {
+          const qUser = query(collection(db,'users', membro.uid,'transacoes'), where('type','==','despesa'), where('ambiente','==', ambienteId));
+          const snap = await getDocs(qUser);
+            processarDocs(snap, true);
+        } else if (modo === 'total') {
+          const membrosRef = collection(db,'ambiences', ambienteId, 'membros');
+          const membrosSnapshot = await getDocs(membrosRef);
+          for (const membroDoc of membrosSnapshot.docs) {
+            const membroData = membroDoc.data();
+            const uid = membroData.uid; if(!uid) continue;
+            const qUser = query(collection(db,'users', uid,'transacoes'), where('type','==','despesa'), where('ambiente','==', ambienteId));
+            try {
+              const snap = await getDocs(qUser);
+              processarDocs(snap, false);
+            } catch(e){ /* ignora membros sem permissão */ }
           }
-        });
-      }
-    }
-
-    setTotal(soma);
-  } catch (error) {
-    console.error("Erro ao buscar despesas:", error);
-  }
-};
-
-
+        }
+        setTotal(soma);
+      } catch(e){ console.error('Erro ao buscar despesas ambiente', e); }
+    };
     fetchDespesas();
   }, [ambienteId, mes, ano, modo, membro]);
 
@@ -116,7 +93,7 @@ export default function CardDespesasAmbiente({
       : `Despesas de ${membro?.nome ?? "Membro"}`;
 
   return (
-    <div className="flex-1 bg-white p-3 rounded-2xl flex items-center gap-3 drop-shadow-lg">
+  <div className="flex-1 bg-white p-3 rounded-2xl flex items-center gap-3 shadow-lg md:h-28 overflow-visible">
       <div className="bg-red-100 p-2 rounded-md">
         <FaDollarSign className="text-red-600" />
       </div>

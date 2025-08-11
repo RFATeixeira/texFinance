@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs } from "firebase/firestore";
 import { auth, db } from "../../app/lib/firebaseConfig";
 import { TransactionModal } from "@/components/transactions/TransactionModal";
 
@@ -10,7 +10,7 @@ export default function CardTransacao({ transacao, onAtualizar }: { transacao: a
   const [emoji, setEmoji] = useState("❓");
   const [userId, setUserId] = useState<string | null>(null);
 
-  const tipo = transacao.type;
+  const tipo = transacao.customType || transacao.type;
 
   const cor =
     tipo === "receita"
@@ -27,37 +27,54 @@ export default function CardTransacao({ transacao, onAtualizar }: { transacao: a
   }, []);
 
   useEffect(() => {
-  async function fetchEmoji() {
-    if (!transacao.categoria || !transacao.subcategoria || !userId) return;
-
-    try {
-      const categoriaRef = doc(db, "users", userId, "categorias", transacao.categoria);
-      const categoriaSnap = await getDoc(categoriaRef);
-
-      if (categoriaSnap.exists()) {
-        const categoriaData = categoriaSnap.data();
-        const subcategorias = categoriaData.subcategorias || [];
-        // procura o item no array de subcategorias com o nome igual ao da transação
-        const subcatData = subcategorias.find(
-          (subcat: any) => subcat.nome === transacao.subcategoria
-        );
-
-        if (subcatData?.emoji) {
-          setEmoji(subcatData.emoji);
+    async function fetchEmoji() {
+      const fallback = transacao.type === 'receita' ? '💰' : transacao.type === 'transferencia' ? '🔄' : '💸';
+  if (!transacao.categoria) { setEmoji(fallback); return; }
+      const ownerUid = transacao.uid || transacao.userId || transacao.ownerId || userId; // tenta diversos campos
+  if (!ownerUid) { setEmoji(fallback); return; }
+      try {
+        let categoriaData: any | null = null;
+        // 1) Tenta por ID direto
+        const categoriaRef = doc(db, 'users', ownerUid, 'categorias', transacao.categoria);
+        const categoriaSnap = await getDoc(categoriaRef);
+        if (categoriaSnap.exists()) {
+          categoriaData = categoriaSnap.data();
         } else {
-          setEmoji("❓");
+          // 2) Tenta buscar por nome (case-insensitive) entre todas categorias
+            const catsSnap = await getDocs(collection(db, 'users', ownerUid, 'categorias'));
+            for (const c of catsSnap.docs) {
+              const data = c.data();
+              if (data.nome && typeof data.nome === 'string') {
+                if (data.nome.toLowerCase() === String(transacao.categoria).toLowerCase()) {
+                  categoriaData = data;
+                  break;
+                }
+              }
+            }
         }
-      } else {
-        setEmoji("❓");
+        if (!categoriaData) {
+          console.debug('[CardTransacao] Categoria não encontrada', { categoria: transacao.categoria, ownerUid });
+          setEmoji(fallback);
+          return;
+        }
+        const subcategorias: any[] = categoriaData.subcategorias || [];
+        let chosen: string | null = null;
+        if (transacao.subcategoria) {
+          const subcatData = subcategorias.find(s => (s.nome||'').toLowerCase() === String(transacao.subcategoria).toLowerCase());
+          if (subcatData) {
+            chosen = subcatData.emoji || subcatData.icone || null;
+          }
+        }
+        if (!chosen) chosen = categoriaData.emoji || categoriaData.icone || null;
+        if (!chosen) console.debug('[CardTransacao] Sem emoji definido, usando fallback', { categoria: transacao.categoria, subcategoria: transacao.subcategoria });
+        setEmoji(chosen || fallback);
+      } catch (err) {
+        console.error('[CardTransacao] Erro ao buscar emoji:', err);
+    setEmoji(fallback);
       }
-    } catch (err) {
-      console.error("Erro ao buscar emoji:", err);
-      setEmoji("❓");
     }
-  }
-
-  fetchEmoji();
-}, [transacao.categoria, transacao.subcategoria, userId]);
+    fetchEmoji();
+  }, [transacao.categoria, transacao.subcategoria, transacao.uid, transacao.userId, transacao.ownerId, userId]);
 
 
   return (

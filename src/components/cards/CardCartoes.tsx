@@ -5,7 +5,7 @@ import { FaPlus, FaCreditCard, FaRegCreditCard, FaPen } from "react-icons/fa";
 import { SiMastercard } from "react-icons/si";
 import { Cartao } from "@/app/types/types";
 import dayjs from "dayjs";
-import { collection, onSnapshot, query, addDoc, getDocs, where, writeBatch, updateDoc, doc, Timestamp } from "firebase/firestore";
+import { collection, onSnapshot, query, addDoc, getDocs, where, writeBatch, updateDoc, doc, Timestamp, deleteDoc } from "firebase/firestore";
 import { db, auth } from "../../app/lib/firebaseConfig";
 import { onAuthStateChanged } from "firebase/auth";
 import Modal from "@/components/ui/Modal";
@@ -47,18 +47,60 @@ export default function CartoesList({ onAdd, showAll, setShowAll }: Props) {
   const [contas, setContas] = useState<any[]>([]);
   const [contaPagamento, setContaPagamento] = useState<string>('');
   const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
+  // Modal para pagamento individual (solicitar conta/data)
+  const [singlePayModalOpen, setSinglePayModalOpen] = useState(false);
+  const [singleParcela, setSingleParcela] = useState<any|null>(null);
+  const [singlePayConta, setSinglePayConta] = useState('');
+  const [singlePayData, setSinglePayData] = useState(dayjs().format('YYYY-MM-DD'));
   // Alterna estado pago e recalcula valorPagamento (soma não pagas do mês atual)
   async function toggleParcelaPago(id:string){
-    try { const user = auth.currentUser; if(!user) return; const alvo = parcelasPendentes.find(p=> p.id===id); if(!alvo) return; const novo = !alvo.paid; await updateDoc(doc(db,'users',user.uid,'transacoes',id), { paid: novo });
-      setParcelasPendentes(prev=> {
-        const atualizado = prev.map(p=> p.id===id? { ...p, paid: novo }: p);
-        const hoje = dayjs();
-        const soma = atualizado.filter(p=> { const dt = p.data?.toDate?.(); if(!dt) return false; return !p.paid && dt.getMonth()===hoje.month() && dt.getFullYear()===hoje.year(); }).reduce((acc,it)=> acc + Number(it.valor||0),0);
-        setValorPagamento(soma);
-        return atualizado;
-      });
+    const alvo = parcelasPendentes.find(p=> p.id===id); if(!alvo) return;
+    if(!alvo.paid){
+      // Abrir modal para coletar conta e data antes de marcar como paga
+      setSingleParcela(alvo);
+      setSinglePayConta('');
+      setSinglePayData(dayjs().format('YYYY-MM-DD'));
+      setSinglePayModalOpen(true);
+    } else {
+      // Desmarcar diretamente e atualizar agregado
+      try { const user = auth.currentUser; if(!user) return; await updateDoc(doc(db,'users',user.uid,'transacoes',id), { paid:false, paidConta: null, paidData: null });
+        setParcelasPendentes(prev=> prev.map(p=> p.id===id? { ...p, paid:false }: p));
+        await recalcAggregatePayment(cartaoSelecionado!);
+        await computeFaturas();
+      } catch(err){ console.error('Erro ao desmarcar parcela', err); }
+    }
+  }
+
+  async function confirmarPagamentoIndividual(){
+    try { const user = auth.currentUser; if(!user || !singleParcela) return; if(!singlePayConta){ alert('Selecione a conta'); return; }
+      await updateDoc(doc(db,'users',user.uid,'transacoes', singleParcela.id), { paid:true, paidConta: singlePayConta, paidData: Timestamp.fromDate(new Date(singlePayData+'T12:00:00')) });
+      setParcelasPendentes(prev=> prev.map(p=> p.id===singleParcela.id? { ...p, paid:true }: p));
+      setSinglePayModalOpen(false); setSingleParcela(null);
+      await recalcAggregatePayment(cartaoSelecionado!);
       await computeFaturas();
-    } catch(err){ console.error('Erro ao alternar parcela', err); }
+    } catch(err){ console.error('Erro ao pagar parcela individual', err); }
+  }
+
+  async function recalcAggregatePayment(cartao: Cartao){
+    try { const user = auth.currentUser; if(!user) return; const cid = cartao.id!;
+      // Carregar todas parcelas do cartão
+      const transQ = query(collection(db,'users', user.uid,'transacoes'), where('cartaoId','==', cid));
+      const transSnap = await getDocs(transQ); const lista:any[] = []; transSnap.forEach(d=> { const dt = d.data(); if(dt.type==='despesa') lista.push({ id:d.id, ...dt }); });
+      // Calcular ciclo fechado corrente
+      const hoje = dayjs(); const diaFech = cartao.diaFechamento; const fechamentoAtual = hoje.date() > diaFech ? hoje.date(diaFech) : hoje.subtract(1,'month').date(diaFech); const fechamentoAnterior = fechamentoAtual.subtract(1,'month');
+      const inicioFechado = fechamentoAnterior.add(1,'day').startOf('day'); const fimFechado = fechamentoAtual.startOf('day');
+      // Somar parcelas pagas dentro do ciclo fechado
+      let soma = 0; lista.forEach(p=> { const dt = p.data?.toDate?.(); if(!dt) return; const djs = dayjs(dt); if((djs.isAfter(inicioFechado)||djs.isSame(inicioFechado)) && djs.isBefore(fimFechado) && p.paid){ soma += Number(p.valor||0);} });
+      // Buscar/agrupar transação agregada existente para este ciclo
+      const payQ = query(collection(db,'users', user.uid,'transacoes'), where('cartaoPagamentoId','==', cid), where('tipoEspecial','==','pagamentoCartaoAggregate'));
+      const paySnap = await getDocs(payQ);
+      // Remover extras além do primeiro
+      let existente = paySnap.docs[0]; if(paySnap.docs.length>1){ for(let i=1;i<paySnap.docs.length;i++){ await deleteDoc(paySnap.docs[i].ref);} }
+      if(soma<=0){ if(existente) await deleteDoc(existente.ref); return; }
+      const valor = soma;
+      if(existente){ await updateDoc(existente.ref, { valor, descricao: `Pagamento cartão ${cartao.nome}`, categoria: 'pagamento_cartao', type: 'despesa', updatedAt: Timestamp.now() }); }
+      else { await addDoc(collection(db,'users', user.uid,'transacoes'), { valor, type:'despesa', data: Timestamp.now(), conta: singlePayConta || null, descricao: `Pagamento cartão ${cartao.nome}`, categoria:'pagamento_cartao', ambiente:'pessoal', ocultar:false, createdAt: Timestamp.now(), cartaoPagamentoId: cid, tipoEspecial:'pagamentoCartaoAggregate' }); }
+    } catch(err){ console.error('Erro recalculando pagamento agregado', err); }
   }
   const router = useRouter();
   const [userId, setUserId] = useState<string | null>(null);
@@ -445,7 +487,7 @@ export default function CartoesList({ onAdd, showAll, setShowAll }: Props) {
                     <li key={p.id} className={`flex items-center gap-2 ${pago? 'opacity-55':''}`}>
                       <input className="purple-checkbox" type="checkbox" disabled={pago} checked={checked && !pago} onChange={()=>{ const ns = new Set(selecionadas); if(checked){ ns.delete(p.id);} else { ns.add(p.id);} setSelecionadas(ns); const soma = parcelasPendentes.filter(x=> ns.has(x.id) && !x.paid).reduce((acc,it)=> acc + Number(it.valor||0),0); setValorPagamento(soma); }} />
                       <span className="flex-1">{dt? dayjs(dt).format('DD/MM/YYYY'):''} - {p.parcelaNumero}/{p.parcelas} - R$ {Number(p.valor||0).toFixed(2)} {pago && <span className="text-green-600 font-semibold ml-1">(pago)</span>}</span>
-                      <button type="button" onClick={()=>{ toggleParcelaPago(p.id); }} className={`px-2 py-0.5 rounded-md text-white ${pago? 'bg-amber-500':'bg-green-600'}`}>{pago? '↺':'✓'}</button>
+                        <button type="button" onClick={()=>{ toggleParcelaPago(p.id); }} className={`px-2 py-0.5 rounded-md text-white ${pago? 'bg-amber-500':'bg-green-600'}`}>{pago? '↺':'✓'}</button>
                     </li>
                   ); })}
                 </ul>
@@ -453,6 +495,28 @@ export default function CartoesList({ onAdd, showAll, setShowAll }: Props) {
               </div>
             )}
             <button type="submit" className="w-full bg-purple-600 text-white rounded-2xl py-2 font-semibold">Confirmar pagamento</button>
+          </form>
+        )}
+      </Modal>
+
+      {/* Modal pagamento individual */}
+      <Modal open={singlePayModalOpen} onClose={()=>{ setSinglePayModalOpen(false); setSingleParcela(null); }} title="Marcar parcela como paga">
+        {singleParcela && (
+          <form onSubmit={(e)=>{ e.preventDefault(); confirmarPagamentoIndividual(); }}>
+            <p className="text-xs text-gray-600 mb-2">Parcela {singleParcela.parcelaNumero}/{singleParcela.parcelas} - Valor R$ {Number(singleParcela.valor||0).toFixed(2)}</p>
+            <label className="block text-sm mb-1">Conta
+              <select value={singlePayConta} onChange={e=> setSinglePayConta(e.target.value)} className="mt-1 w-full border-2 border-purple-500 rounded-2xl p-2 focus:outline-0 mb-4">
+                <option value="">Selecione</option>
+                {contas.map(c=> <option key={c.id} value={c.id}>{c.nome}</option>)}
+              </select>
+            </label>
+            <label className="block text-sm mb-1">Data
+              <input type="date" value={singlePayData} onChange={e=> setSinglePayData(e.target.value)} className="mt-1 w-full border-2 border-purple-500 rounded-2xl p-2 focus:outline-0 mb-4" />
+            </label>
+            <div className="flex gap-2">
+              <button type="button" onClick={()=>{ setSinglePayModalOpen(false); setSingleParcela(null); }} className="flex-1 bg-gray-200 text-gray-700 rounded-2xl py-2 font-semibold">Cancelar</button>
+              <button type="submit" className="flex-1 bg-green-600 text-white rounded-2xl py-2 font-semibold">Confirmar</button>
+            </div>
           </form>
         )}
       </Modal>
