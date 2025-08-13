@@ -17,8 +17,8 @@ import {
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { formatarValorVisibilidade } from '@/utils/saldoInvisivel';
-import { computeInvestmentGrowth, computeInvestmentGrowthHistorical } from '@/utils/investmentInterest';
-import { useCdiHistory } from '@/hooks/useCdiHistory';
+import { computeInvestmentGrowth } from '@/utils/investmentInterest';
+import { useDailyCdi } from '@/hooks/useDailyCdi';
 
 type Props = {
   onAdd: () => void;
@@ -46,7 +46,7 @@ export default function ContasList({ onAdd }: Props) {
   const [userUid, setUserUid] = useState<string | null>(null);
   const [mostrarValores, setMostrarValores] = useState(true);
   const [showInvestCard, setShowInvestCard] = useState(false);
-  const { history: cdiHistory } = useCdiHistory();
+  const { cdi } = useDailyCdi();
 
   useEffect(() => {
   let unsubscribeContas = () => {};
@@ -142,6 +142,14 @@ export default function ContasList({ onAdd }: Props) {
   return ()=> { window.removeEventListener('visibilidade-valores', handler as any); window.removeEventListener('cdi-updated', cdiHandler as any); };
   }, []);
 
+  // Sincroniza CDI global para cálculo dinâmico (igual página investimentos / card investimentos)
+  useEffect(()=>{
+    if(cdi?.annualRatePercent && typeof window !== 'undefined'){
+      // @ts-ignore
+      window.__globalCdiAnnual = cdi.annualRatePercent;
+    }
+  }, [cdi]);
+
   // Organizar hierarquia (contas parent -> children investimento)
   const parents = contas.filter(c => !(c as any).parentId);
   const childrenMap: Record<string, Conta[]> = {};
@@ -187,11 +195,7 @@ export default function ContasList({ onAdd }: Props) {
           parents.map((conta) => {
             const saldoBase = calcularSaldo(conta.id);
             const isInvestParent = (conta as any).tipoConta === 'investimento';
-            const investData = isInvestParent ? (
-              cdiHistory.length > 0
-                ? computeInvestmentGrowthHistorical(transacoes as any, conta.id, { cdiPercent: (conta as any).cdiPercent }, cdiHistory as any)
-                : computeInvestmentGrowth(transacoes as any, conta.id, conta as any)
-            ) : null;
+            const investData = isInvestParent ? computeInvestmentGrowth(transacoes as any, conta.id, { cdiPercent: (conta as any).cdiPercent }) : null;
             const saldo = investData ? investData.currentValue : saldoBase;
             const children = childrenMap[conta.id] || [];
             const hasChildren = children.length > 0;
@@ -246,11 +250,7 @@ export default function ContasList({ onAdd }: Props) {
                     {children.map(child => {
                       const isInvest = (child as any).tipoConta === 'investimento';
                       const baseChild = calcularSaldo(child.id);
-                      const investChild = isInvest ? (
-                        cdiHistory.length > 0
-                          ? computeInvestmentGrowthHistorical(transacoes as any, child.id, { cdiPercent: (child as any).cdiPercent }, cdiHistory as any)
-                          : computeInvestmentGrowth(transacoes as any, child.id, child as any)
-                      ) : null;
+                      const investChild = isInvest ? computeInvestmentGrowth(transacoes as any, child.id, { cdiPercent: (child as any).cdiPercent }) : null;
                       const saldoChild = investChild ? investChild.currentValue : baseChild;
                       return (
                         <div
