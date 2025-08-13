@@ -171,8 +171,9 @@ export function useTransactionForm({ transacao, tipo, onSaved, onClose }: UseTra
         const origemInvest = contaOrigemObj?.tipoConta === 'investimento';
         const destinoInvest = contaDestinoObj?.tipoConta === 'investimento';
         const colRef = collection(db, 'users', uid, 'transacoes');
-        if (destinoInvest && !origemInvest) {
-          // Transferência para investimento: criar apenas uma transação do tipo transferencia
+        if ((destinoInvest && !origemInvest) || (origemInvest && !destinoInvest)) {
+          // Transferência envolvendo investimento (aporte ou resgate)
+          const isAporte = destinoInvest && !origemInvest;
           const transferencia = {
             type: 'transferencia',
             valor: Number(values.valor),
@@ -182,29 +183,16 @@ export function useTransactionForm({ transacao, tipo, onSaved, onClose }: UseTra
             createdAt: Timestamp.now(),
             contaOrigem: values.contaOrigem,
             contaDestino: values.contaDestino,
-            categoria: 'aporte_investimento',
+            categoria: isAporte ? 'aporte_investimento' : 'resgate_investimento',
             subcategoria: contaOrigemObj?.nome || '',
-          };
-          await (await import('firebase/firestore')).addDoc(colRef, transferencia);
-          onSaved?.();
-          onClose?.();
-          setLoading(false);
-          return;
-        } else if (origemInvest && !destinoInvest) {
-          // Resgate de investimento: criar apenas uma transação do tipo transferencia
-          const transferencia = {
-            type: 'transferencia',
-            valor: Number(values.valor),
-            data: dateStringToTimestamp(values.data),
-            descricao: values.descricao,
-            ocultar: values.ocultar,
-            createdAt: Timestamp.now(),
-            contaOrigem: values.contaOrigem,
-            contaDestino: values.contaDestino,
-            categoria: 'resgate_investimento',
-            subcategoria: contaOrigemObj?.nome || '',
-          };
-          await (await import('firebase/firestore')).addDoc(colRef, transferencia);
+          } as any;
+          if (values.id) {
+            // Atualiza a transação existente em vez de criar nova (corrige bug de duplicação)
+            const ref = doc(db, 'users', uid, 'transacoes', values.id);
+            await (await import('firebase/firestore')).updateDoc(ref, transferencia);
+          } else {
+            await (await import('firebase/firestore')).addDoc(colRef, transferencia);
+          }
           onSaved?.();
           onClose?.();
           setLoading(false);

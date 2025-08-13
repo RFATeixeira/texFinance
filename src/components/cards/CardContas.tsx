@@ -17,6 +17,8 @@ import {
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { formatarValorVisibilidade } from '@/utils/saldoInvisivel';
+import { computeInvestmentGrowth, computeInvestmentGrowthHistorical } from '@/utils/investmentInterest';
+import { useCdiHistory } from '@/hooks/useCdiHistory';
 
 type Props = {
   onAdd: () => void;
@@ -44,6 +46,7 @@ export default function ContasList({ onAdd }: Props) {
   const [userUid, setUserUid] = useState<string | null>(null);
   const [mostrarValores, setMostrarValores] = useState(true);
   const [showInvestCard, setShowInvestCard] = useState(false);
+  const { history: cdiHistory } = useCdiHistory();
 
   useEffect(() => {
   let unsubscribeContas = () => {};
@@ -133,8 +136,10 @@ export default function ContasList({ onAdd }: Props) {
     if(stored!==null) setMostrarValores(stored==='true');
     function handler(e:any){ startTransition(()=> setMostrarValores(!!e.detail?.visivel)); }
     window.addEventListener('visibilidade-valores', handler as any);
+  const cdiHandler = ()=>{ setTransacoes(t=> [...t]); }; // força re-render para recomputar useMemo
+  window.addEventListener('cdi-updated', cdiHandler as any);
     try { const pref = localStorage.getItem('showInvestCard'); setShowInvestCard(pref==='true'); } catch {}
-    return ()=> window.removeEventListener('visibilidade-valores', handler as any);
+  return ()=> { window.removeEventListener('visibilidade-valores', handler as any); window.removeEventListener('cdi-updated', cdiHandler as any); };
   }, []);
 
   // Organizar hierarquia (contas parent -> children investimento)
@@ -180,7 +185,14 @@ export default function ContasList({ onAdd }: Props) {
           <p className="text-sm text-gray-500">Nenhuma conta cadastrada.</p>
         ) : (
           parents.map((conta) => {
-            const saldo = calcularSaldo(conta.id);
+            const saldoBase = calcularSaldo(conta.id);
+            const isInvestParent = (conta as any).tipoConta === 'investimento';
+            const investData = isInvestParent ? (
+              cdiHistory.length > 0
+                ? computeInvestmentGrowthHistorical(transacoes as any, conta.id, { cdiPercent: (conta as any).cdiPercent }, cdiHistory as any)
+                : computeInvestmentGrowth(transacoes as any, conta.id, conta as any)
+            ) : null;
+            const saldo = investData ? investData.currentValue : saldoBase;
             const children = childrenMap[conta.id] || [];
             const hasChildren = children.length > 0;
             const isOpen = expanded[conta.id];
@@ -222,11 +234,24 @@ export default function ContasList({ onAdd }: Props) {
                     <p className="text-xs text-gray-500">Saldo atual</p>
                     <p className="text-sm font-bold text-gray-800">R$ {formatarValorVisibilidade(saldo, mostrarValores)}</p>
                   </div>
+                  {isInvestParent && investData && (
+                    <div className="flex justify-between mt-1 text-[10px] text-gray-500">
+                      <span>Aportado: R$ {formatarValorVisibilidade(investData.invested, mostrarValores)}</span>
+                      <span>Juros: R$ {formatarValorVisibilidade(investData.interest, mostrarValores)}</span>
+                    </div>
+                  )}
                 </div>
                 {isOpen && hasChildren && (
                   <div className="ml-4 flex flex-col gap-1">
                     {children.map(child => {
-                      const saldoChild = calcularSaldo(child.id);
+                      const isInvest = (child as any).tipoConta === 'investimento';
+                      const baseChild = calcularSaldo(child.id);
+                      const investChild = isInvest ? (
+                        cdiHistory.length > 0
+                          ? computeInvestmentGrowthHistorical(transacoes as any, child.id, { cdiPercent: (child as any).cdiPercent }, cdiHistory as any)
+                          : computeInvestmentGrowth(transacoes as any, child.id, child as any)
+                      ) : null;
+                      const saldoChild = investChild ? investChild.currentValue : baseChild;
                       return (
                         <div
                           key={child.id}
@@ -250,6 +275,12 @@ export default function ContasList({ onAdd }: Props) {
                             <p className="text-[10px] text-gray-500">Saldo</p>
                             <p className="text-xs font-bold text-gray-800">R$ {formatarValorVisibilidade(saldoChild, mostrarValores)}</p>
                           </div>
+                          {isInvest && investChild && (
+                            <div className="flex justify-between mt-1 text-[9px] text-gray-500">
+                              <span>Aportado: R$ {formatarValorVisibilidade(investChild.invested, mostrarValores)}</span>
+                              <span>Juros: R$ {formatarValorVisibilidade(investChild.interest, mostrarValores)}</span>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
