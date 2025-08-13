@@ -207,9 +207,10 @@ export default function ContasList({ onAdd }: Props) {
                               <button
                                 type="button"
                                 onClick={(e)=>{ e.stopPropagation(); setExpanded(ex=> ({...ex, [conta.id]: !isOpen})); }}
-                                className="text-purple-500 text-xs flex items-center gap-1"
+                                className={`group flex items-center gap-1 md:gap-1.5 bg-purple-500 hover:bg-purple-600 active:bg-purple-700 text-white text-[11px] md:text-xs font-medium px-3 py-[1px] rounded-full shadow-sm shadow-purple-300/40 focus:outline-none focus:ring-2 focus:ring-purple-400/60 active:scale-[.97] transition ${isOpen ? 'pr-2.5' : ''}`}
                               >
-                                {isOpen ? <FaChevronDown /> : <FaChevronRight />}
+                                <span>{(conta as any).tipoConta === 'investimento' ? "Invest's" : "Invest's"}</span>
+                                <FaChevronRight className={`text-[10px] md:text-xs transition-transform duration-300 ${isOpen ? 'rotate-90' : ''}`} />
                               </button>
                             )}
                           </p>
