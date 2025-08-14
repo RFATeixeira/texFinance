@@ -131,21 +131,24 @@ export default function ChartsDashboard(){
   if(!uid) return <div className="p-4">Faça login para ver os gráficos.</div>;
 
   return (
-    <div className="flex flex-col gap-6 p-4 overflow-x-hidden">
+  <div className="flex flex-col gap-6 px-4 pb-4 overflow-x-hidden">
+      {/* Barra sticky título + seletor mês */}
       <div
-        className="sticky top-0 z-30 -mx-4 px-4 pt-3 pb-3 bg-white/95 backdrop-blur flex flex-wrap gap-4 items-end border-b border-purple-100 shadow-xl"
-        style={{ paddingLeft: 'max(env(safe-area-inset-left),1rem)', paddingRight: 'max(env(safe-area-inset-right),1rem)' }}
+        className="fixed top-0 left-0 right-0 md:left-56 md:w-[calc(100%-14rem)] z-40 bg-white/95 backdrop-blur flex flex-wrap gap-6 items-center border-b border-purple-100 shadow-xl px-4 py-3"
       >
-        <label className="text-xs font-semibold text-gray-600 flex flex-col">
-          Mês
-          <select value={mes} onChange={e=> setMes(e.target.value)} className="mt-1 border-2 border-purple-500 rounded-xl px-2 py-1 text-sm bg-white">
+        <h1 className="text-lg font-semibold text-gray-800 mr-auto">Gráficos</h1>
+        <div className="flex items-center gap-2 text-xs font-semibold text-gray-600">
+          <span>Mês</span>
+          <select value={mes} onChange={e=> setMes(e.target.value)} className="border-2 border-purple-500 rounded-xl px-2 py-1 text-sm bg-white">
             {Array.from({length:12}, (_,i)=> dayjs().subtract(i,'month')).map(d=> {
               const val = d.format('YYYY-MM');
               return <option key={val} value={val}>{d.format('MM/YYYY')}</option>;
             })}
           </select>
-        </label>
+        </div>
       </div>
+      {/* Espaço para compensar barra fixa */}
+      <div style={{height:'72px'}} />
 
       {loading && <p className="text-sm text-gray-500">Carregando dados...</p>}
 

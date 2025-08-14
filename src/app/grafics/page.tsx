@@ -6,8 +6,7 @@ const ChartsDashboard = dynamic(()=> import('@/components/grafics/ChartsDashboar
 
 export default function GraficsPage(){
   return (
-    <div className="mt-4 mb-20">
-      <h1 className="text-lg font-semibold px-4 text-gray-800">Gráficos</h1>
+    <div className="mb-20">
       <ChartsDashboard />
     </div>
   );

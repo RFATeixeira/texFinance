@@ -10,6 +10,10 @@ import {
   FaUser,
   FaMinus,
   FaExchangeAlt,
+  FaTags,
+  FaChartLine,
+  FaUsers,
+  FaUserCog,
 } from "react-icons/fa";
 import { useEffect, useState } from "react";
 
@@ -152,6 +156,13 @@ export default function Navbar() {
           <SidebarLink href="/transactions" icon={<FaList />} active={pathname==="/transactions"}>Transações</SidebarLink>
           <SidebarLink href="/grafics" icon={<FaChartBar />} active={pathname==="/grafics"}>Gráficos</SidebarLink>
           <SidebarLink href="/profile" icon={<FaUser />} active={pathname==="/profile"}>Perfil</SidebarLink>
+          {/* Sub-links perfil (desktop only) */}
+          <div className="mt-2 space-y-1">
+            <SidebarLink href="/profile/categorias" icon={<FaTags />} active={pathname==="/profile/categorias"}>Categorias</SidebarLink>
+            <SidebarLink href="/profile/investimentos" icon={<FaChartLine />} active={pathname==="/profile/investimentos"}>Investimentos</SidebarLink>
+            <SidebarLink href="/profile/ambience" icon={<FaUsers />} active={pathname==="/profile/ambience"}>Ambientes</SidebarLink>
+            <SidebarLink href="/profile/configuracoes" icon={<FaUserCog />} active={pathname==="/profile/configuracoes"}>Configurações</SidebarLink>
+          </div>
         </div>
         <div className="p-4 border-t border-gray-100">
           <button
@@ -184,3 +195,4 @@ function SidebarLink({ href, icon, children, active }: SidebarLinkProps){
     </Link>
   );
 }
+
