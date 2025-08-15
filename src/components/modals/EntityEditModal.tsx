@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect } from 'react';
 import Modal from '@/components/ui/Modal';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '@/app/lib/firebaseConfig';
 
 export type EntityModalKind = 'categoria' | 'subcategoria' | 'membro' | 'membroEmail' | 'confirm';
 
@@ -21,6 +23,20 @@ export default function EntityEditModal({ open, kind, onClose, onSave, onDelete,
   const [icone, setIcone] = useState('📁');
   const [confirmMessage, setConfirmMessage] = useState('');
   const [email, setEmail] = useState('');
+
+  const [globalEmojis, setGlobalEmojis] = useState<string[]>([]);
+
+  useEffect(()=>{
+    (async ()=>{
+      try {
+        const ref = collection(db,'global','meta','emojis');
+        const snap = await getDocs(ref);
+        const lista:string[] = [];
+        snap.forEach(d=> { const v = (d.data() as any).valor; if(v) lista.push(v); });
+        if (lista.length) setGlobalEmojis(lista.sort((a,b)=> a.localeCompare(b)));
+      } catch(e){ /* ignore */ }
+    })();
+  },[]);
 
   useEffect(() => {
     if (!open) return;
@@ -81,7 +97,7 @@ export default function EntityEditModal({ open, kind, onClose, onSave, onDelete,
         );
       case 'categoria':
       case 'subcategoria':
-        const emojis = extra?.emojis || DEFAULT_EMOJIS;
+  const emojis = (globalEmojis.length? globalEmojis : extra?.emojis) || DEFAULT_EMOJIS;
         return (
           <div className="space-y-4">
             <label className="text-sm font-semibold flex flex-col gap-1">

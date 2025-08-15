@@ -14,6 +14,7 @@ import {
   FaChartLine,
   FaUsers,
   FaUserCog,
+  FaSmile,
 } from "react-icons/fa";
 import { useEffect, useState } from "react";
 
@@ -159,6 +160,8 @@ export default function Navbar() {
           {/* Sub-links perfil (desktop only) */}
           <div className="mt-2 space-y-1">
             <SidebarLink href="/profile/categorias" icon={<FaTags />} active={pathname==="/profile/categorias"}>Categorias</SidebarLink>
+            {/* Emojis abaixo de Categorias */}
+            <SidebarLink href="/profile/emojis" icon={<FaSmile />} active={pathname==="/profile/emojis"}>Emojis</SidebarLink>
             <SidebarLink href="/profile/investimentos" icon={<FaChartLine />} active={pathname==="/profile/investimentos"}>Investimentos</SidebarLink>
             <SidebarLink href="/profile/ambience" icon={<FaUsers />} active={pathname==="/profile/ambience"}>Ambientes</SidebarLink>
             <SidebarLink href="/profile/configuracoes" icon={<FaUserCog />} active={pathname==="/profile/configuracoes"}>Configurações</SidebarLink>

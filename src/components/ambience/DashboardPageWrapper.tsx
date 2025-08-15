@@ -75,38 +75,26 @@ export default function DashBoardPageWrapper({ ambienteId }: { ambienteId: strin
       .map((doc) => {
         const data = doc.data();
         if (typeof data.type === "string" && (data.valor !== undefined || data.valor !== null)) {
-          return {
-            id: doc.id,
-            ...data,
-          } as Transacao;
+          return { id: doc.id, ...data } as Transacao;
         }
         return null;
       })
       .filter((t): t is Transacao => t !== null);
 
-    // Determina mês anterior
+    // Regra: compras de CARTÃO realizadas no mês anterior aparecem no mês ATUAL (porque é quando a fatura é paga).
+    // Ex: visualizando Março -> inclui compras de cartão de Fevereiro + despesas normais de Março.
     let prevMes = mes - 1; let prevAno = ano;
     if (prevMes < 0) { prevMes = 11; prevAno = ano - 1; }
 
     return todasTransacoes.filter((d) => {
       if (d.type !== "despesa") return false;
-      // excluir transação de pagamento de fatura (não queremos duplicar)
-      if (d.categoria === 'pagamento_cartao' || d.tipoEspecial === 'pagamentoCartao' || d.tipoEspecial === 'pagamentoCartaoAggregate') return false;
-
+      if (d.categoria === 'pagamento_cartao' || d.tipoEspecial === 'pagamentoCartao' || d.tipoEspecial === 'pagamentoCartaoAggregate') return false; // não contar pagamento da fatura
       const data = d.data?.toDate ? d.data.toDate() : d.data;
       if (!data || !(data instanceof Date)) return false;
-
       const m = data.getMonth();
       const y = data.getFullYear();
       const isCartao = !!d.cartaoId;
-
-      if (isCartao) {
-        // Despesas de cartão: considerar as do mês anterior como pertencentes ao mês atual (ciclo pago agora)
-        return m === prevMes && y === prevAno;
-      } else {
-        // Despesas normais: mês corrente
-        return m === mes && y === ano;
-      }
+      return isCartao ? (m===prevMes && y===prevAno) : (m===mes && y===ano);
     });
   }
 
@@ -163,15 +151,19 @@ export default function DashBoardPageWrapper({ ambienteId }: { ambienteId: strin
 
     const despesasValidas = despesas.filter((d) => {
       const data = d.data?.toDate ? dayjs(d.data.toDate()) : dayjs(d.data);
-      return data.isAfter(dataLimite);
+      if (!data.isAfter(dataLimite)) {
+        // Mantém despesas de cartão (cartaoId) mesmo fora da janela para não perder fatura deslocada
+        return !!d.cartaoId;
+      }
+      return true;
     });
 
-     const despesasOrdenadas = despesasValidas.sort((a, b) => {
-     const dataA = dayjs(a.data?.toDate?.() ?? a.data);
-     const dataB = dayjs(b.data?.toDate?.() ?? b.data);
-     return ordemReversa
+    const despesasOrdenadas = despesasValidas.sort((a, b) => {
+      const dataA = dayjs(a.data?.toDate?.() ?? a.data);
+      const dataB = dayjs(b.data?.toDate?.() ?? b.data);
+      return ordemReversa
         ? dataA.valueOf() - dataB.valueOf()
-       : dataB.valueOf() - dataA.valueOf();
+        : dataB.valueOf() - dataA.valueOf();
     });
 
     despesasFiltradas[uid] = despesasOrdenadas;

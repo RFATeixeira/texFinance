@@ -38,29 +38,46 @@ export default function TransacoesPage() {
   async function carregarTransacoes() {
     if (!userId) return;
 
-    const dataLimite = Timestamp.fromDate(
-      new Date(Date.now() - periodoDias * 24 * 60 * 60 * 1000)
-    );
-
     const transacoesRef = collection(db, "users", userId, "transacoes");
-    const q = query(
-      transacoesRef,
-      where("data", ">=", dataLimite),
-      orderBy("data", ordemReversa ? "desc" : "asc")
-    );
 
-    const snapshot = await getDocs(q);
-    const lista = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-    setTransacoes(lista);
+    let qRef;
+    if (mesSelecionado) {
+      // Filtro por mês específico (YYYY-MM)
+      const start = dayjs(mesSelecionado + "-01").startOf("month").toDate();
+      const end = dayjs(mesSelecionado + "-01").endOf("month").toDate();
+      const startTs = Timestamp.fromDate(start);
+      const endTs = Timestamp.fromDate(end);
+      qRef = query(
+        transacoesRef,
+        where("data", ">=", startTs),
+        where("data", "<=", endTs),
+        orderBy("data", ordemReversa ? "desc" : "asc")
+      );
+    } else {
+      // Filtro por período em dias retroativos
+      const dataLimite = Timestamp.fromDate(
+        new Date(Date.now() - periodoDias * 24 * 60 * 60 * 1000)
+      );
+      qRef = query(
+        transacoesRef,
+        where("data", ">=", dataLimite),
+        orderBy("data", ordemReversa ? "desc" : "asc")
+      );
+    }
+
+    try {
+      const snapshot = await getDocs(qRef);
+      const lista = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      setTransacoes(lista);
+    } catch (e) {
+      console.error('Erro ao carregar transações', e);
+    }
   }
 
   // Use o useEffect para carregar as transações inicialmente e sempre que filtros mudarem
   useEffect(() => {
     carregarTransacoes();
-  }, [userId, ordemReversa, periodoDias]);
+  }, [userId, ordemReversa, periodoDias, mesSelecionado]);
 
   const categoriasInvestimento = [
     "aporte_investimento",

@@ -12,6 +12,8 @@ import {
   query,
   orderBy,
   deleteDoc,
+  getDocs,
+  addDoc,
 } from "firebase/firestore";
 import { onAuthStateChanged, User } from "firebase/auth";
 import EntityEditModal from "@/components/modals/EntityEditModal";
@@ -121,6 +123,20 @@ export default function CategoriasPage() {
         await setDoc(docRef, cat);
       }
     }
+    // Seed emojis globais caso coleção global esteja vazia
+    try {
+      const globalRef = collection(db,'global','meta','emojis');
+      const snap = await getDocs(globalRef);
+      if (snap.empty) {
+        for (const cat of categoriasFixas) {
+          const base = [cat.emoji, ...cat.subcategorias.map(s=> s.emoji)];
+          for (const em of base) {
+            if(!em) continue;
+            await addDoc(globalRef,{ valor: em });
+          }
+        }
+      }
+    } catch(e){ /* silencioso */ }
   }
 
   useEffect(() => {
@@ -181,7 +197,7 @@ export default function CategoriasPage() {
         </button>
       </div>
 
-  <div className="grid gap-6 md:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 auto-rows-fr">
+  <div className="grid gap-6 md:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 auto-rows-fr w-full">
         {categorias.map((cat) => (
           <div key={cat.id} className="bg-white rounded-2xl shadow p-4 h-full flex flex-col">
             <div className="flex flex-row justify-between">

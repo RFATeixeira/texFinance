@@ -1,6 +1,6 @@
 "use client";
 
-import { FaTags, FaSignOutAlt, FaUsers, FaUserCog, FaChartLine } from "react-icons/fa";
+import { FaTags, FaSignOutAlt, FaUsers, FaUserCog, FaChartLine, FaSmile } from "react-icons/fa";
 import { HiChevronRight } from "react-icons/hi";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -57,7 +57,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
+  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
         {/* Card Categorias */}
         <div
           onClick={() => router.push("/profile/categorias")}
@@ -68,6 +68,20 @@ export default function ProfilePage() {
               <FaTags className="text-purple-500 text-2xl" />
             </span>
             <p className="text-base md:text-lg font-semibold">Categorias</p>
+          </div>
+          <HiChevronRight className="text-purple-400 text-2xl group-hover:translate-x-1 transition" />
+        </div>
+
+        {/* Card Emojis */}
+        <div
+          onClick={() => router.push("/profile/emojis")}
+          className="group cursor-pointer bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition flex items-center justify-between h-full"
+        >
+          <div className="flex flex-row items-center gap-3">
+            <span className="bg-purple-50 p-3 rounded-xl group-hover:bg-purple-100 transition">
+              <FaSmile className="text-purple-500 text-2xl" />
+            </span>
+            <p className="text-base md:text-lg font-semibold">Emojis</p>
           </div>
           <HiChevronRight className="text-purple-400 text-2xl group-hover:translate-x-1 transition" />
         </div>
