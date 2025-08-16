@@ -200,28 +200,32 @@ export default function TransacoesPage() {
           </select>
         </div>
         <button
-          className={`h-10 px-4 rounded-2xl border-2 text-sm font-medium transition ${mostrarCredito ? 'bg-purple-100 border-purple-400 text-purple-700' : 'bg-gray-100 border-gray-300 text-gray-500'}`}
+          className={`px-4 h-[44px] rounded-2xl border-2 text-sm font-medium transition flex items-center ${mostrarCredito ? 'bg-purple-100 border-purple-400 text-purple-700' : 'bg-gray-100 border-gray-300 text-gray-500'}`}
           onClick={() => setMostrarCredito(v => !v)}
         >
           Despesas no Crédito
         </button>
       </div>
       {/* Mobile: tipo, dias e ordem em cima; meses e crédito abaixo */}
-      <div className="flex flex-col md:hidden gap-2 mb-2">
-        <div className="flex items-center gap-2">
-          <FiltroTransacoes
-            filtroTipo={filtroTipo}
-            setFiltroTipo={setFiltroTipo}
-            ordemReversa={ordemReversa}
-            setOrdemReversa={setOrdemReversa}
-            periodoDias={periodoDias}
-            setPeriodoDias={setPeriodoDias}
-            diasDesabilitado={!!mesSelecionado}
-          />
+      <div className="flex flex-col md:hidden gap-2 mb-2 w-full">
+        {/* Primeira linha: distribuir início e fim */}
+  <div className="flex w-full items-stretch justify-around gap-2">
+          <div className="flex-1 min-w-0">
+            <FiltroTransacoes
+              filtroTipo={filtroTipo}
+              setFiltroTipo={setFiltroTipo}
+              ordemReversa={ordemReversa}
+              setOrdemReversa={setOrdemReversa}
+              periodoDias={periodoDias}
+              setPeriodoDias={setPeriodoDias}
+              diasDesabilitado={!!mesSelecionado}
+            />
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+        {/* Segunda linha também justify-between */}
+  <div className="flex items-center justify-around gap-2 w-full">
           <select
-            className="border-2 border-purple-500 p-2 rounded-2xl focus:outline-0 min-w-[140px]"
+            className="flex-1 border-2 border-purple-500 p-2 rounded-2xl focus:outline-0"
             value={mesSelecionado}
             onChange={(e) => setMesSelecionado(e.target.value)}
           >
@@ -233,7 +237,7 @@ export default function TransacoesPage() {
             ))}
           </select>
           <button
-            className={`h-10 px-4 rounded-2xl border-2 text-sm font-medium transition ml-auto ${mostrarCredito ? 'bg-purple-100 border-purple-400 text-purple-700' : 'bg-gray-100 border-gray-300 text-gray-500'}`}
+            className={`px-4 h-[44px] rounded-2xl border-2 text-sm font-medium transition flex items-center ${mostrarCredito ? 'bg-purple-100 border-purple-400 text-purple-700' : 'bg-gray-100 border-gray-300 text-gray-500'}`}
             onClick={() => setMostrarCredito(v => !v)}
           >
             Crédito

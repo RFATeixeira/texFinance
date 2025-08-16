@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/app/lib/firebaseConfig";
 import Navbar from "@/components/Navbar";
+import EmojiBackfill from "@/components/EmojiBackfill";
+import { UserProfileProvider } from '@/context/UserProfileContext';
 
 export default function ClientLayout({
   children,
@@ -41,9 +43,12 @@ export default function ClientLayout({
   }
 
   return (
-    <div className={wrapperClass}>
-      {children}
-      {!shouldHideNavbar && userPresent && <Navbar />}
-    </div>
+    <UserProfileProvider>
+      <div className={wrapperClass}>
+        <EmojiBackfill />
+        {children}
+        {!shouldHideNavbar && userPresent && <Navbar />}
+      </div>
+    </UserProfileProvider>
   );
 }

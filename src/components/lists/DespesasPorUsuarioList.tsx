@@ -2,7 +2,8 @@ import dayjs from "dayjs";
 import "dayjs/locale/pt-br";
 import { useEffect, useState } from 'react';
 import { db, auth } from '@/app/lib/firebaseConfig';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
+import { syncAmbienceCategoryMeta } from '@/utils/ambienceCategorySync';
 
 interface Transacao {
   id: string;
@@ -11,10 +12,8 @@ interface Transacao {
   data?: any;
   uid?: string;
   descricao?: string;
-  subcategoriaEmoji?: string;
   ambiente?: string;
   categoria?: string;
-  subcategoria?: string;
   [key: string]: any;
 }
 
@@ -83,12 +82,7 @@ export default function DespesasPorUsuarioList({
           let emoji = '📁';
           if (catSnap.exists()) {
             const catData: any = catSnap.data();
-            const subs: any[] = catData.subcategorias || [];
-            if (d.subcategoria) {
-              const sub = subs.find((s:any)=> (s.nome||'').toLowerCase() === String(d.subcategoria).toLowerCase());
-              if (sub?.emoji) emoji = sub.emoji;
-            }
-            if (emoji==='📁' && (catData.emoji||catData.icone)) emoji = catData.emoji || catData.icone;
+            if ((catData.emoji||catData.icone)) emoji = catData.emoji || catData.icone;
           }
           updates[key] = emoji;
         } catch {/* ignora */}
@@ -96,6 +90,22 @@ export default function DespesasPorUsuarioList({
       if (Object.keys(updates).length) setEmojiCache(prev=> ({...prev, ...updates}));
     })();
   }, [despesasOrdenadas, emojiCache]);
+
+  // Busca metadados de categorias compartilhadas de todos os membros para o ambiente atual
+  const [sharedMeta, setSharedMeta] = useState<Record<string, any>>({});
+  useEffect(()=>{
+    (async()=>{
+      if (!ambienteAtual) return;
+      try {
+        // dispara sync do próprio usuário silenciosamente
+        await syncAmbienceCategoryMeta(ambienteAtual);
+        const snap = await getDocs(collection(db,'ambiences', ambienteAtual,'categoryMeta'));
+        const map: Record<string, any> = {};
+        snap.forEach(d=> { map[d.id] = d.data(); });
+        setSharedMeta(map);
+      } catch(e){ /* ignore */ }
+    })();
+  }, [ambienteAtual]);
 
   return (
     <div className="text-gray-800 space-y-6">
@@ -105,6 +115,17 @@ export default function DespesasPorUsuarioList({
           <div className="space-y-3">
             {despesasPorData[data].map((d) => {
               const nomeUsuario = nomesUsuarios[d.uid ?? ""] || "Desconhecido";
+              // Resolve emoji final: prioridade para cache próprio, depois meta compartilhado, depois campos gravados na transação
+              let finalEmoji = emojiCache[d.id] || d.categoriaEmoji;
+              if (!finalEmoji && d.categoria) {
+                // tentar sharedMeta: pattern key = uid_categoriaId
+                const meta = sharedMeta[`${d.uid}_${d.categoria}`];
+                if (meta) {
+                  // subcategorias removidas
+                  if (!finalEmoji && meta.emoji) finalEmoji = meta.emoji;
+                }
+              }
+              if (!finalEmoji) finalEmoji = (d.type==='receita' ? '💰' : d.type==='transferencia' ? '🔄' : '💸');
               return (
                 <div
                   key={d.id}
@@ -131,7 +152,7 @@ export default function DespesasPorUsuarioList({
 
                   {/* Direita */}
                   <div className="text-right">
-                    <p className="text-2xl">{emojiCache[d.id] || d.subcategoriaEmoji || "�"}</p>
+                    <p className="text-2xl">{finalEmoji}</p>
                     <p className="text-xs text-gray-500">{nomeUsuario}</p>
                   </div>
                 </div>

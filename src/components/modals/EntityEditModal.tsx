@@ -4,7 +4,7 @@ import Modal from '@/components/ui/Modal';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/app/lib/firebaseConfig';
 
-export type EntityModalKind = 'categoria' | 'subcategoria' | 'membro' | 'membroEmail' | 'confirm';
+export type EntityModalKind = 'categoria' | 'membro' | 'membroEmail' | 'confirm';
 
 interface BaseProps {
   open: boolean;
@@ -95,8 +95,7 @@ export default function EntityEditModal({ open, kind, onClose, onSave, onDelete,
             <p className="text-xs text-gray-500">Será buscado um usuário existente pelo email informado.</p>
           </div>
         );
-      case 'categoria':
-      case 'subcategoria':
+  case 'categoria':
   const emojis = (globalEmojis.length? globalEmojis : extra?.emojis) || DEFAULT_EMOJIS;
         return (
           <div className="space-y-4">

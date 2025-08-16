@@ -1,11 +1,12 @@
 "use client";
 import { useEffect, useState } from 'react';
 import { auth, db } from '../../lib/firebaseConfig';
-import { onAuthStateChanged, updateProfile, User } from 'firebase/auth';
+import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { FaArrowLeft } from 'react-icons/fa';
 import { useToast } from '@/components/ui/ToastProvider';
+import { useUserProfile } from '@/context/UserProfileContext';
 
 export default function ConfiguracoesContaPage(){
   const [user,setUser] = useState<User|null>(null);
@@ -23,20 +24,18 @@ export default function ConfiguracoesContaPage(){
     return ()=>unsub();
   },[router]);
 
+  const { setNome: setNomeGlobal } = useUserProfile();
   const handleSalvar = async ()=>{
     if(!user) return;
     if(!nome.trim()){ notify('Nome não pode ser vazio',{ type:'error'}); return; }
-    try{
+    try {
       setSaving(true);
-      // atualiza auth profile
-      await updateProfile(user,{ displayName: nome.trim() });
-      // atualiza firestore user doc (campo nome)
-      await updateDoc(doc(db,'users',user.uid),{ nome: nome.trim() });
+      await setNomeGlobal(nome.trim());
       notify('Nome atualizado',{ type:'success'});
-    }catch(e){
+    } catch(e){
       console.error(e);
       notify('Erro ao salvar',{ type:'error'});
-    }finally{ setSaving(false); }
+    } finally { setSaving(false); }
   };
 
   return (
@@ -63,7 +62,7 @@ export default function ConfiguracoesContaPage(){
           <button
             onClick={handleSalvar}
             disabled={saving}
-            className="w-full bg-purple-600 text-white py-3 rounded-2xl font-semibold hover:bg-purple-700 disabled:opacity-60"
+            className="w-full bg-purple-500 text-white py-3 rounded-2xl font-semibold hover:bg-purple-600 disabled:opacity-60"
           >{saving ? 'Salvando...' : 'Salvar alterações'}</button>
         </div>
       )}

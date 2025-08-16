@@ -19,6 +19,19 @@ body {
   font-family: sans-serif;
 }
 
+/* Bottom sheet animations */
+@keyframes sheetIn {
+  0% { transform: translateY(100%); opacity: 0; }
+  60% { transform: translateY(-4%); opacity: 1; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+@keyframes sheetOut {
+  0% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(100%); opacity: 0; }
+}
+.sheet-enter { animation: sheetIn .28s cubic-bezier(.22,.68,0,1.01); }
+.sheet-leave { animation: sheetOut .25s ease-in forwards; }
+
 /* Normalizar input date no iOS (remover zoom visual / aparência estreita) */
 input[type="date"],
 input[type="month"],
@@ -27,6 +40,11 @@ input[type="time"] {
   appearance: none;
   line-height: 1.2;
   font-size: 16px; /* evita zoom automático do iOS < 16 para campos menores */
+}
+
+/* Garantir 16px mínimo em inputs de texto para evitar zoom iOS */
+input[type="text"], input[type="email"], input[type="search"], input[type="tel"], input[type="url"], input[type="password"], textarea {
+  font-size: 16px;
 }
 
 /* Ajuste interno dos pseudo elementos do date no WebKit */
@@ -79,6 +97,43 @@ input[type=checkbox].purple-checkbox:disabled {
   cursor: not-allowed;
   background: #f3f4f6; /* gray-100 */
 }
+
+/* iOS style toggle (apply .toggle-ios to a checkbox input) */
+input[type=checkbox].toggle-ios {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 44px;
+  height: 26px;
+  background: #e5e7eb; /* gray-200 */
+  border-radius: 9999px;
+  position: relative;
+  cursor: pointer;
+  outline: none;
+  transition: background .25s ease;
+  border: 1px solid #d1d5db;
+}
+input[type=checkbox].toggle-ios:before {
+  content: "";
+  position: absolute;
+  /* center vertically (track 26px incl 2px border => inner 24px; knob 22px => offset 1px) */
+  top: 1px; left: 2px;
+  width: 22px; height: 22px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,.25);
+  transition: transform .25s ease;
+}
+input[type=checkbox].toggle-ios:checked {
+  background: linear-gradient(90deg,#8b5cf6,#6366f1);
+  border-color: #8b5cf6;
+}
+input[type=checkbox].toggle-ios:checked:before {
+  transform: translateX(18px);
+}
+input[type=checkbox].toggle-ios:focus-visible {
+  box-shadow: 0 0 0 3px rgba(139,92,246,.35);
+}
+input[type=checkbox].toggle-ios:disabled { opacity:.6; cursor:not-allowed; }
 
 .select-wrapper {
   position: relative;

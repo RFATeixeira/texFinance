@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { auth } from "../app/lib/firebaseConfig";
+import { useUserProfile } from '@/context/UserProfileContext';
 import Image from "next/image";
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
 import Notificacoes from "@/components/Notification"; // ou "@/components/Notificacoes" dependendo do nome do arquivo
 
 export default function Header() {
   const [user, setUser] = useState<User | null>(null);
+  const { nome } = useUserProfile();
   const [mostrarValores, setMostrarValores] = useState<boolean>(true);
 
   useEffect(() => {
@@ -52,7 +54,7 @@ export default function Header() {
         <p className="text-lg font-semibold text-gray-800">
           Olá,{" "}
           <span className="text-gray-800">
-            {user?.displayName?.split(" ")[0] ?? "..."}
+            {(nome || user?.displayName || '...').split(' ')[0]}
           </span>
           !
         </p>

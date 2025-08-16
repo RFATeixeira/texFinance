@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
+import { useUserProfile } from '@/context/UserProfileContext';
 import { auth, db } from "../../lib/firebaseConfig";
 import {
   collection,
@@ -24,6 +25,7 @@ import type { Ambiente, Membro } from "../../../app/types/types";
 import { collection as fsCollection, query as fsQuery, where as fsWhere, getDocs as fsGetDocs, setDoc as fsSetDoc } from "firebase/firestore";
 
 export default function AmbientesPage() {
+  const { nome: nomeAtual } = useUserProfile();
   const [user, setUser] = useState<User | null>(null);
   const [ambientes, setAmbientes] = useState<Ambiente[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,7 +102,7 @@ export default function AmbientesPage() {
       nome: dados.nome,
       icone: dados.icone,
       criador: user.uid,
-      membros: [{ uid: user.uid, nome: user.displayName || "Sem nome" }],
+      membros: [{ uid: user.uid, nome: nomeAtual || user.displayName || "Sem nome" }],
     });
     setIsModalAddAmbienteOpen(false);
   } catch (error) {

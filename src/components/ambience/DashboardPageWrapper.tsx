@@ -9,7 +9,7 @@ import FiltroTransacoes from "../filters/FiltroTransacoes";
 import DespesasPorUsuarioList from "@/components/lists/DespesasPorUsuarioList";
 
 import { db, auth } from "../../app/lib/firebaseConfig";
-import { collection, getDocs, doc, getDoc, query as fsQuery, where } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, query as fsQuery, where, onSnapshot } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import CardDespesasAmbiente from "../cards/CardDespesasAmbiente";
 import { Bar, Line, Pie } from 'react-chartjs-2';
@@ -51,7 +51,8 @@ export default function DashBoardPageWrapper({ ambienteId }: { ambienteId: strin
   // Filtros adicionais
   const [usuarioSelecionado, setUsuarioSelecionado] = useState("todos");
   const [diasFiltro, setDiasFiltro] = useState(30);
-  const [ordemReversa, setOrdemReversa] = useState(false);
+  // Inverte padrão: agora começa em ordem "último primeiro" (ativando flag já no início)
+  const [ordemReversa, setOrdemReversa] = useState(true);
   const [modoUsuario, setModoUsuario] = useState<'line'|'bar'|'pie'>('bar');
   const [modoTodos, setModoTodos] = useState<'line'|'bar'|'pie'>('bar');
   const [usuarioGrafico, setUsuarioGrafico] = useState<string>('');
@@ -108,9 +109,21 @@ export default function DashBoardPageWrapper({ ambienteId }: { ambienteId: strin
         return;
       }
       
-  const membrosSnapshot = await getDocs(collection(db, "ambiences", ambienteId, "membros"));
-  const membrosComNome = membrosSnapshot.docs.map(d=> ({ uid: d.id, nome: (d.data() as any).nome || 'Sem nome' }));
-  setMembros(membrosComNome);
+      const membrosSnapshot = await getDocs(collection(db, "ambiences", ambienteId, "membros"));
+      // Base inicial a partir da subcoleção
+      let membrosComNome = membrosSnapshot.docs.map(d=> ({ uid: d.id, nome: (d.data() as any).nome || 'Sem nome' }));
+      // Enriquecer com nome atual do user doc (que reflete mudanças recentes de configuração)
+      membrosComNome = await Promise.all(membrosComNome.map(async (m)=>{
+        try {
+          const userDoc = await getDoc(doc(db,'users', m.uid));
+          if (userDoc.exists()) {
+            const data:any = userDoc.data();
+            return { ...m, nome: data.nome || data.displayName || m.nome };
+          }
+        } catch {}
+        return m;
+      }));
+      setMembros(membrosComNome);
       // Define usuário padrão do gráfico: prioriza o próprio usuário autenticado
       if (!usuarioGrafico && membrosComNome.length > 0) {
         const preferido = membrosComNome.find(m => m.uid === u?.uid) || membrosComNome[0];
@@ -132,6 +145,21 @@ export default function DashBoardPageWrapper({ ambienteId }: { ambienteId: strin
 
     return () => unsubscribe();
   }, [ambienteId, currentIndex]);
+
+  // Assinar alterações de nome em tempo real para cada membro
+  useEffect(()=>{
+    if (!membros.length) return;
+    const unsubs = membros.map(m=> onSnapshot(doc(db,'users', m.uid), snap => {
+      if (snap.exists()) {
+        const data:any = snap.data();
+        const novoNome = data.nome || data.displayName;
+        if (novoNome && novoNome !== m.nome) {
+          setMembros(prev => prev.map(x=> x.uid===m.uid ? { ...x, nome: novoNome } : x));
+        }
+      }
+    }));
+    return ()=> { unsubs.forEach(u=> { try { u(); } catch {} }); };
+  }, [membros.map(m=> m.uid).join(',')]);
 
   // Atualiza usuarioGrafico se lista de membros mudar e uid atual não existir
     useEffect(()=>{
@@ -283,7 +311,7 @@ export default function DashBoardPageWrapper({ ambienteId }: { ambienteId: strin
         const map: Record<number,string> = {1:'md:grid-cols-1',2:'md:grid-cols-2',3:'md:grid-cols-3',4:'md:grid-cols-4',5:'md:grid-cols-5'};
         const mdCols = map[cols];
         return (
-          <div className="mt-6 -mx-4 sticky top-0 z-30 md:-mx-4">
+          <div className="mt-6 -mx-4 sticky top-0 z-20 md:-mx-4">
             <div className={`bg-white/90 backdrop-blur-md border-b border-gray-100/70 pb-3 px-4 grid gap-3 grid-cols-2 ${mdCols}`}>
               <div className="col-span-2 md:col-span-1">
                 <CardDespesasAmbiente

@@ -15,18 +15,37 @@ interface Props {
 
 export function TransactionForm({ tipo, transacao, onSaved, onClose }: Props) {
   const { values, update, submit, loading, contas, categorias, cartoes, ambientes, isEdit, remove } = useTransactionForm({ tipo, transacao, onSaved, onClose });
+  const labelNome = React.useMemo(()=>{
+    if (tipo === 'receita') return 'Nome da receita';
+    if (tipo === 'despesa') return 'Nome da despesa';
+    if (tipo === 'transferencia') return 'Nome da transferência';
+    return 'Nome';
+  }, [tipo]);
 
   return (
     <div className="flex flex-col gap-3">
-      <ValueField
-        value={values.valor}
-        onChange={(v) => update('valor', v)}
-        parcelado={tipo==='despesa' && !!values.cartaoId}
-        parcelas={values.parcelas || 1}
-        modo={values.valorModo || 'parcela'}
-        onModoChange={(m)=> update('valorModo', m)}
-      />
-      <DateField value={values.data} onChange={(v) => update('data', v)} />
+      {/* Campo Nome/Descrição primeiro para facilitar no mobile e evitar zoom */}
+    <label className="block text-sm font-semibold text-gray-700">{labelNome}
+        <input
+          value={values.descricao || ''}
+          onChange={(e)=>update('descricao', e.target.value)}
+      className="mt-1 w-full p-2 border-2 border-purple-500 rounded-2xl focus:outline-0 text-[16px]"
+          placeholder={labelNome}
+          autoComplete="off"
+          inputMode="text"
+        />
+      </label>
+      <div className="grid grid-cols-2 gap-3">
+        <ValueField
+          value={values.valor}
+          onChange={(v) => update('valor', v)}
+          parcelado={tipo==='despesa' && !!values.cartaoId}
+          parcelas={values.parcelas || 1}
+          modo={values.valorModo || 'parcela'}
+          onModoChange={(m)=> update('valorModo', m)}
+        />
+        <DateField value={values.data} onChange={(v) => update('data', v)} />
+      </div>
 
       {tipo === 'transferencia' ? (
         <div className="grid grid-cols-2 gap-3">
@@ -38,7 +57,7 @@ export function TransactionForm({ tipo, transacao, onSaved, onClose }: Props) {
           {!values.cartaoId && (
             <AccountSelect contas={contas} value={values.conta || ''} onChange={(v)=>update('conta', v)} />
           )}
-          <CategorySelect categorias={categorias} value={values.categoria || ''} onChange={(v)=>update('categoria', v)} subcategoria={values.subcategoria || ''} onSubChange={(v)=>update('subcategoria', v)} />
+          <CategorySelect categorias={categorias} value={values.categoria || ''} onChange={(v)=>update('categoria', v)} />
           {tipo === 'despesa' && (
             <label className="block text-sm font-semibold text-gray-700">Ambiente
               <select value={values.ambiente || ''} onChange={(e)=>update('ambiente', e.target.value)} className="mt-1 w-full p-2 border-2 border-purple-500 rounded-2xl focus:outline-0">
@@ -58,11 +77,11 @@ export function TransactionForm({ tipo, transacao, onSaved, onClose }: Props) {
               {values.cartaoId && (
                 <div className="grid grid-cols-2 gap-3">
                   <label className="block text-sm font-semibold text-gray-700">Parcelas totais
-                    <input type="number" min={1} value={values.parcelas || 1} onChange={e=>update('parcelas', Number(e.target.value))} className="mt-1 w-full p-2 border-2 border-purple-500 rounded-2xl focus:outline-0" />
+                    <input type="number" min={1} value={values.parcelas || 1} onChange={e=>update('parcelas', Number(e.target.value))} className="mt-1 w-full p-2 h-10 border-2 border-purple-500 rounded-2xl focus:outline-0 text-[16px] leading-tight appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" />
                   </label>
                   {values.parcelas && values.parcelas>1 && (
                     <label className="block text-sm font-semibold text-gray-700">Parcela atual
-                      <input type="number" min={1} max={values.parcelas} value={values.parcelaInicio || 1} onChange={e=>update('parcelaInicio', Number(e.target.value))} className="mt-1 w-full p-2 border-2 border-purple-500 rounded-2xl focus:outline-0" />
+                      <input type="number" min={1} max={values.parcelas} value={values.parcelaInicio || 1} onChange={e=>update('parcelaInicio', Number(e.target.value))} className="mt-1 w-full p-2 h-10 border-2 border-purple-500 rounded-2xl focus:outline-0 text-[16px] leading-tight appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" />
                     </label>
                   )}
                 </div>
@@ -72,13 +91,8 @@ export function TransactionForm({ tipo, transacao, onSaved, onClose }: Props) {
         </>
       )}
 
-      <label className="block text-sm font-semibold text-gray-700">Descrição
-        <input value={values.descricao || ''} onChange={(e)=>update('descricao', e.target.value)} className="mt-1 w-full p-2 border-2 border-purple-500 rounded-2xl focus:outline-0" />
-      </label>
+  {/* Campo nome movido para o topo */}
   {/* Observações removido */}
-      <label className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700">
-        <input className="purple-checkbox" type="checkbox" checked={values.ocultar || false} onChange={(e)=>update('ocultar', e.target.checked)} /> Ocultar
-      </label>
 
       <div className="flex gap-2 pt-2">
         {isEdit && (

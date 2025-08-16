@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { db, auth } from "../../app/lib/firebaseConfig";
 import {
   deleteDoc,
@@ -13,7 +13,7 @@ import { FaTimes } from "react-icons/fa";
 import { dateStringToTimestamp, timestampToDateInput } from "../../utils/date";
 
 // DEPRECATED: usar TransactionModal.
-export default function ModalTransferencia({
+export default function ModalReceita({
   transacao,
   onClose,
   onAtualizar,
@@ -23,8 +23,7 @@ export default function ModalTransferencia({
   onAtualizar: () => void;
 }) {
   const [valor, setValor] = useState(transacao.valor);
-  const [contaOrigem, setContaOrigem] = useState(transacao.contaOrigem || "");
-  const [contaDestino, setContaDestino] = useState(transacao.contaDestino || "");
+  const [conta, setConta] = useState(transacao.conta || "");
   const [data, setData] = useState(
     timestampToDateInput(transacao.data)
   );
@@ -32,7 +31,7 @@ export default function ModalTransferencia({
 
   const modalRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
         onClose();
@@ -69,8 +68,7 @@ export default function ModalTransferencia({
       const ref = doc(db, "users", userId, "transacoes", transacao.id);
       await updateDoc(ref, {
         valor: parseFloat(valor),
-        contaOrigem,
-        contaDestino,
+        conta,
         data: dateStringToTimestamp(data),
       });
       onAtualizar();
@@ -107,59 +105,41 @@ export default function ModalTransferencia({
           </button>
         </div>
 
-        <div className="space-y-2">
-          <label className="block text-md">
-            Valor (R$)
-            <input
-              type="number"
-              className="w-full p-2 border-2 border-purple-500 rounded-2xl focus:outline-0"
-              value={valor}
-              onChange={(e) => setValor(Number(e.target.value))}
-            />
-          </label>
+        <label className="block text-md">
+          Valor
+          <input
+            type="number"
+            className="w-full p-2 border-2 border-purple-500 rounded-2xl focus:outline-0"
+            value={valor}
+            onChange={(e) => setValor(Number(e.target.value))}
+          />
+        </label>
 
-          <label className="block text-md">
-            Conta Origem
-            <select
-              className="w-full p-2 border-2 border-purple-500 rounded-2xl focus:outline-0"
-              value={contaOrigem}
-              onChange={(e) => setContaOrigem(e.target.value)}
-            >
-              <option value="">Selecione a conta de origem</option>
-              {contas.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nome}
-                </option>
-              ))}
-            </select>
-          </label>
+        <label className="block text-md">
+          Conta
+          <select
+            className="w-full p-2 border-2 border-purple-500 rounded-2xl focus:outline-0"
+            value={conta}
+            onChange={(e) => setConta(e.target.value)}
+          >
+            <option value="">Selecione uma conta</option>
+            {contas.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nome}
+              </option>
+            ))}
+          </select>
+        </label>
 
-          <label className="block text-md">
-            Conta Destino
-            <select
-              className="w-full p-2 border-2 border-purple-500 rounded-2xl focus:outline-0"
-              value={contaDestino}
-              onChange={(e) => setContaDestino(e.target.value)}
-            >
-              <option value="">Selecione a conta de destino</option>
-              {contas.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nome}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block text-md">
-            Data
-            <input
-              type="date"
-              className="appearance-none w-full p-2 border-2 border-purple-500 rounded-2xl focus:outline-0"
-              value={data}
-              onChange={(e) => setData(e.target.value)}
-            />
-          </label>
-        </div>
+        <label className="block text-md">
+          Data
+          <input
+            type="date"
+            className="appearance-none w-full p-2 border-2 border-purple-500 rounded-2xl focus:outline-0"
+            value={data}
+            onChange={(e) => setData(e.target.value)}
+          />
+        </label>
 
         <div className="flex justify-between pt-4">
           <div className="space-x-2 w-full justify-between flex flex-row">

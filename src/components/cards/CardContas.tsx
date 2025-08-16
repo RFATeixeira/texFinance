@@ -2,7 +2,7 @@
 
 import { useState, useEffect, startTransition } from "react";
 import { Conta, Transacao } from "@/app/types/types";
-import { FaPlus, FaWallet, FaChevronDown, FaChevronRight } from "react-icons/fa";
+import { FaPlus, FaWallet, FaChevronDown, FaChevronRight, FaStar } from "react-icons/fa";
 
 import Modal from "@/components/ui/Modal";
 
@@ -174,6 +174,23 @@ export default function ContasList({ onAdd }: Props) {
     }
   }
 
+  async function marcarFavorita(contaId: string){
+    if(!userUid) return;
+    try {
+      const atualFav = (contas as any[]).find(c=> (c as any).favorita);
+      if (atualFav && atualFav.id === contaId) {
+        // desfavoritar
+        await updateDoc(doc(db,'users', userUid,'contas', contaId), { favorita: false });
+        return;
+      }
+      // remove outra favorita
+      if (atualFav && atualFav.id !== contaId) {
+        await updateDoc(doc(db,'users', userUid,'contas', atualFav.id), { favorita: false });
+      }
+      await updateDoc(doc(db,'users', userUid,'contas', contaId), { favorita: true });
+    } catch(e){ console.error('Erro ao marcar favorita', e); }
+  }
+
   return (
     <>
       <section className="mt-4 px-3 py-3 gap-3 flex flex-col bg-white rounded-2xl drop-shadow-lg">
@@ -200,15 +217,24 @@ export default function ContasList({ onAdd }: Props) {
             const children = childrenMap[conta.id] || [];
             const hasChildren = children.length > 0;
             const isOpen = expanded[conta.id];
+            const favoritaId = (contas as any[]).find(c=> (c as any).favorita)?.id;
             return (
               <div key={conta.id} className="flex flex-col gap-1">
                 <div
-                  className="bg-gray-50 p-4 rounded-xl text-gray-800 cursor-pointer hover:bg-purple-50 transition flex flex-col"
+                  className="bg-gray-50 p-4 rounded-xl text-gray-800 cursor-pointer hover:bg-purple-50 transition flex flex-col relative"
                   onClick={() => {
                     setContaSelecionada(conta);
                     setEditModalOpen(true);
                   }}
                 >
+                  <button
+                    type="button"
+                    onClick={(e)=>{ e.stopPropagation(); marcarFavorita(conta.id); }}
+                    className="absolute top-2 right-2 p-1 rounded-full hover:bg-yellow-100 transition"
+                    aria-label={favoritaId === conta.id ? 'Desfavoritar conta' : 'Favoritar conta'}
+                  >
+                    <FaStar className={`text-base ${favoritaId === conta.id ? 'text-yellow-400' : 'text-gray-300'}`} />
+                  </button>
                   <div className="flex justify-between items-start">
                     <div className="flex gap-2 w-full justify-between">
                       <div className="flex flex-row gap-2">
@@ -252,12 +278,21 @@ export default function ContasList({ onAdd }: Props) {
                       const baseChild = calcularSaldo(child.id);
                       const investChild = isInvest ? computeInvestmentGrowth(transacoes as any, child.id, { cdiPercent: (child as any).cdiPercent }) : null;
                       const saldoChild = investChild ? investChild.currentValue : baseChild;
+                      const favoritaId = (contas as any[]).find(c=> (c as any).favorita)?.id;
                       return (
                         <div
                           key={child.id}
-                          className="bg-white border border-purple-100 p-3 rounded-xl text-gray-800 cursor-pointer hover:bg-purple-50 transition"
+                          className="bg-white border border-purple-100 p-3 rounded-xl text-gray-800 cursor-pointer hover:bg-purple-50 transition relative"
                           onClick={() => { setContaSelecionada(child); setEditModalOpen(true); }}
                         >
+                          <button
+                            type="button"
+                            onClick={(e)=>{ e.stopPropagation(); marcarFavorita(child.id); }}
+                            className="absolute top-2 right-2 p-1 rounded-full hover:bg-yellow-100 transition"
+                            aria-label={favoritaId === child.id ? 'Desfavoritar conta' : 'Favoritar conta'}
+                          >
+                            <FaStar className={`text-[12px] ${favoritaId === child.id ? 'text-yellow-400' : 'text-gray-300'}`} />
+                          </button>
                           <div className="flex justify-between items-start">
                             <div className="flex gap-2 w-full justify-between">
                               <div className="flex flex-row gap-2">
@@ -266,7 +301,7 @@ export default function ContasList({ onAdd }: Props) {
                                 </div>
                                 <div>
                                   <p className="text-[10px] text-gray-500">{tipoLabel(child)}</p>
-                                  <p className="text-xs font-semibold text-gray-800">{child.nome}</p>
+                                  <p className="text-xs font-semibold text-gray-800 flex items-center gap-1">{child.nome}</p>
                                 </div>
                               </div>
                             </div>
@@ -318,8 +353,7 @@ export default function ContasList({ onAdd }: Props) {
               <div className="flex text-sm items-center text-gray-800 font-semibold gap-2 mb-4">
                 <input
                   type="checkbox"
-                  id="visivel-no-saldo"
-                  className="peer hidden"
+                  className="toggle-ios"
                   checked={contaSelecionada.visivelNoSaldo ?? true}
                   onChange={(e) =>
                     setContaSelecionada({
@@ -328,49 +362,18 @@ export default function ContasList({ onAdd }: Props) {
                     })
                   }
                 />
-                <label
-                  htmlFor="visivel-no-saldo"
-                  className="w-5 h-5 border-2 border-purple-500 rounded-md flex items-center justify-center peer-checked:bg-purple-500 peer-checked:border-purple-500 transition-colors cursor-pointer"
-                >
-                  <svg
-                    className="w-3 h-3 text-white hidden peer-checked:block"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                </label>
-                <label htmlFor="visivel-no-saldo" className="cursor-pointer">
-                  Mostrar no saldo total
-                </label>
+                <span className="cursor-pointer select-none">Mostrar no saldo total</span>
               </div>
             )}
             {(contaSelecionada as any)?.tipoConta === 'investimento' && (
               <div className="flex text-sm items-center text-gray-800 font-semibold gap-2 mb-4">
                 <input
                   type="checkbox"
-                  id="show-invest-card"
-                  className="peer hidden"
+                  className="toggle-ios"
                   checked={showInvestCard}
                   onChange={(e)=> setShowInvestCard(e.target.checked)}
                 />
-                <label
-                  htmlFor="show-invest-card"
-                  className="w-5 h-5 border-2 border-purple-500 rounded-md flex items-center justify-center peer-checked:bg-purple-500 peer-checked:border-purple-500 transition-colors cursor-pointer"
-                >
-                  <svg
-                    className="w-3 h-3 text-white hidden peer-checked:block"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                </label>
-                <label htmlFor="show-invest-card" className="cursor-pointer">Exibir card Investimentos</label>
+                <span className="cursor-pointer select-none">Exibir card Investimentos</span>
               </div>
             )}
 
@@ -384,7 +387,7 @@ export default function ContasList({ onAdd }: Props) {
               </button>
               <button
                 type="submit"
-                className="bg-purple-600 text-white px-4 py-2 rounded-2xl w-full hover:bg-purple-700"
+                className="bg-purple-500 text-white px-4 py-2 rounded-2xl w-full hover:bg-purple-600"
               >
                 Salvar
               </button>

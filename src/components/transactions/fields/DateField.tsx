@@ -6,7 +6,7 @@ export function DateField({ value, onChange }: { value: string; onChange: (v: st
       Data
       <input
         type="date"
-        className="mt-1 w-full p-2 border-2 border-purple-500 rounded-2xl focus:outline-0"
+        className="mt-1 w-full p-2 h-10 border-2 border-purple-500 rounded-2xl focus:outline-0 text-[16px] leading-tight"
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />

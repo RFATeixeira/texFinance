@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, startTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { auth, db } from '@/app/lib/firebaseConfig';
 import { collection, getDocs } from 'firebase/firestore';
 import { FaChartLine } from 'react-icons/fa';
@@ -17,6 +18,7 @@ export default function CardInvestimentos() {
   const { cdi } = useDailyCdi();
   const [mostrarValores, setMostrarValores] = useState(true);
   const [enabled, setEnabled] = useState(false);
+  const router = useRouter();
 
   useEffect(()=>{
     try {
@@ -65,7 +67,7 @@ export default function CardInvestimentos() {
   if(!enabled) return null;
 
   return (
-  <div className="mt-2 md:mt-0 bg-white px-3 py-3 rounded-2xl drop-shadow-lg flex justify-between items-center border border-purple-100 md:h-24">
+  <button onClick={()=> router.push('/profile/investimentos')} className="mt-2 md:mt-0 bg-white px-3 py-3 rounded-2xl shadow-lg flex justify-between items-center border border-purple-100 md:h-24 w-full text-left active:scale-[0.985] transition">
       <div className="flex flex-row items-center gap-2">
         <div className="bg-purple-100 p-2 rounded-md">
           <FaChartLine className="text-purple-600" />
@@ -77,6 +79,6 @@ export default function CardInvestimentos() {
         <p className="text-[10px] text-gray-500">Aportado: <span className="font-semibold text-gray-600">R$ {formatarValorVisibilidade(totalInvested, mostrarValores)}</span></p>
         <p className="text-[10px] text-gray-500">Juros: <span className="font-semibold text-green-600">R$ {formatarValorVisibilidade(totalInterest, mostrarValores)}</span></p>
       </div>
-    </div>
+    </button>
   );
 }

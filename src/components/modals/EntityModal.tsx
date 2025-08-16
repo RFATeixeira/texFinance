@@ -178,7 +178,7 @@ export default function EntityModal({ open, type, onClose, onSaved }: EntityModa
   return (
     <div className="fixed inset-0 z-50 backdrop-blur-xs flex items-center justify-center text-gray-800">
       <div ref={ref} className="relative bg-white rounded-xl p-5 w-[90%] max-w-md shadow-lg">
-        <button onClick={onClose} className="absolute top-4 right-4 text-gray-500"><FaTimes /></button>
+  <button onClick={onClose} className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition" aria-label="Fechar"><FaTimes className="text-xl" /></button>
         <h2 className="text-lg font-semibold mb-4">{type === 'conta' ? 'Nova Conta' : type === 'cartao' ? 'Novo Cartão' : 'Novo Ambiente'}</h2>
         {renderBody()}
         <div className="flex gap-2 mt-6">

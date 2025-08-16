@@ -290,7 +290,7 @@ export default function CartoesList({ onAdd, showAll, setShowAll }: Props) {
                         </div>
                       </div>
                       <div className="flex flex-col gap-1 items-end">
-                        <button className="text-xs px-3 py-1 rounded-full bg-purple-600 text-white" onClick={()=>{ setCartaoSelecionado(cartao); setValorPagamento(aberto); setPayModalOpen(true); }}>Pagar</button>
+                        <button className="text-xs px-3 py-1 rounded-full bg-purple-500 hover:bg-purple-600 text-white" onClick={()=>{ setCartaoSelecionado(cartao); setValorPagamento(aberto); setPayModalOpen(true); }}>Pagar</button>
                       </div>
                     </div>
 
@@ -384,7 +384,7 @@ export default function CartoesList({ onAdd, showAll, setShowAll }: Props) {
                   type="number"
                   value={editValues.limite}
                   onChange={(e) => setEditValues(v=> ({...v, limite: Number(e.target.value)}))}
-                  className="w-full p-2 border-2 border-purple-500 rounded-2xl focus:outline-0 mb-3"
+                  className="w-full p-2 h-10 border-2 border-purple-500 rounded-2xl focus:outline-0 mb-3 text-[16px] leading-tight appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 />
               </div>
               <div>
@@ -395,7 +395,7 @@ export default function CartoesList({ onAdd, showAll, setShowAll }: Props) {
                   max={31}
                   value={editValues.diaFechamento}
                   onChange={(e) => setEditValues(v=> ({...v, diaFechamento: Number(e.target.value)}))}
-                  className="w-full p-2 border-2 border-purple-500 rounded-2xl focus:outline-0 mb-3"
+                  className="w-full p-2 h-10 border-2 border-purple-500 rounded-2xl focus:outline-0 mb-3 text-[16px] leading-tight appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 />
               </div>
               <div>
@@ -406,13 +406,13 @@ export default function CartoesList({ onAdd, showAll, setShowAll }: Props) {
                   max={31}
                   value={editValues.diaVencimento}
                   onChange={(e) => setEditValues(v=> ({...v, diaVencimento: Number(e.target.value)}))}
-                  className="w-full p-2 border-2 border-purple-500 rounded-2xl focus:outline-0 mb-3"
+                  className="w-full p-2 h-10 border-2 border-purple-500 rounded-2xl focus:outline-0 mb-3 text-[16px] leading-tight appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 />
               </div>
             </div>
             <button
               type="submit"
-              className="bg-purple-600 text-white px-4 py-2 rounded-2xl w-full mt-2 hover:bg-purple-700"
+              className="bg-purple-500 text-white px-4 py-2 rounded-2xl w-full mt-2 hover:bg-purple-600"
             >
               Salvar alterações
             </button>
@@ -458,7 +458,7 @@ export default function CartoesList({ onAdd, showAll, setShowAll }: Props) {
             }
             setPayModalOpen(false); await computeFaturas(); } catch(err){ console.error(err); } }}>
             <label className="block text-sm mb-1">Valor</label>
-            <input type="number" className="w-full border-2 border-purple-500 rounded-2xl p-2 focus:outline-0 mb-4" value={valorPagamento} onChange={e=> setValorPagamento(Number(e.target.value))} />
+            <input type="number" className="w-full border-2 border-purple-500 rounded-2xl p-2 h-10 focus:outline-0 mb-4 text-[16px] leading-tight appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={valorPagamento} onChange={e=> setValorPagamento(Number(e.target.value))} />
             <label className="block text-sm mb-1">Conta de pagamento
               <select value={contaPagamento} onChange={e=> setContaPagamento(e.target.value)} className="mt-1 w-full border-2 border-purple-500 rounded-2xl p-2 focus:outline-0 mb-4">
                 <option value="">Selecione</option>
@@ -485,7 +485,7 @@ export default function CartoesList({ onAdd, showAll, setShowAll }: Props) {
                 <ul className="space-y-1 text-xs">
                   {parcelasPendentes.map(p=> { const dt=p.data?.toDate?.(); const pago=!!p.paid; const checked = selecionadas.has(p.id); return (
                     <li key={p.id} className={`flex items-center gap-2 ${pago? 'opacity-55':''}`}>
-                      <input className="purple-checkbox" type="checkbox" disabled={pago} checked={checked && !pago} onChange={()=>{ const ns = new Set(selecionadas); if(checked){ ns.delete(p.id);} else { ns.add(p.id);} setSelecionadas(ns); const soma = parcelasPendentes.filter(x=> ns.has(x.id) && !x.paid).reduce((acc,it)=> acc + Number(it.valor||0),0); setValorPagamento(soma); }} />
+                      <input className="toggle-ios" type="checkbox" disabled={pago} checked={checked && !pago} onChange={()=>{ const ns = new Set(selecionadas); if(checked){ ns.delete(p.id);} else { ns.add(p.id);} setSelecionadas(ns); const soma = parcelasPendentes.filter(x=> ns.has(x.id) && !x.paid).reduce((acc,it)=> acc + Number(it.valor||0),0); setValorPagamento(soma); }} />
                       <span className="flex-1">{dt? dayjs(dt).format('DD/MM/YYYY'):''} - {p.parcelaNumero}/{p.parcelas} - R$ {Number(p.valor||0).toFixed(2)} {pago && <span className="text-green-600 font-semibold ml-1">(pago)</span>}</span>
                         <button type="button" onClick={()=>{ toggleParcelaPago(p.id); }} className={`px-2 py-0.5 rounded-md text-white ${pago? 'bg-amber-500':'bg-green-600'}`}>{pago? '↺':'✓'}</button>
                     </li>
@@ -494,7 +494,7 @@ export default function CartoesList({ onAdd, showAll, setShowAll }: Props) {
                 <p className="mt-2 text-[0.65rem] text-gray-500">Valor = soma das parcelas selecionadas</p>
               </div>
             )}
-            <button type="submit" className="w-full bg-purple-600 text-white rounded-2xl py-2 font-semibold">Confirmar pagamento</button>
+            <button type="submit" className="w-full bg-purple-500 hover:bg-purple-600 text-white rounded-2xl py-2 font-semibold">Confirmar pagamento</button>
           </form>
         )}
       </Modal>

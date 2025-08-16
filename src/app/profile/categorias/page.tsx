@@ -14,6 +14,7 @@ import {
   deleteDoc,
   getDocs,
   addDoc,
+  writeBatch,
 } from "firebase/firestore";
 import { onAuthStateChanged, User } from "firebase/auth";
 import EntityEditModal from "@/components/modals/EntityEditModal";
@@ -109,10 +110,7 @@ export default function CategoriasPage() {
   const [categorias, setCategorias] = useState<CategoriaType[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalCategoria, setModalCategoria] = useState<null | CategoriaType>(null);
-  const [modalSubcategoria, setModalSubcategoria] = useState<{
-    categoriaId: string;
-    subcategoria?: { nome: string; emoji: string };
-  } | null>(null);
+  // Subcategorias removidas: estado/toggle/migração eliminados
 
   // Verifica e cria categorias fixas no Firestore caso não existam
   async function inicializarCategoriasFixas(uid: string) {
@@ -167,8 +165,11 @@ export default function CategoriasPage() {
           fixed: doc.data().fixed || false,
         });
       });
-
-      setCategorias(userCategorias);
+  // Garantir ordenação alfabética (defensivo, já usamos orderBy no query)
+  userCategorias.sort((a,b)=> a.nome.localeCompare(b.nome,'pt-BR',{ sensitivity:'base'}));
+  // Ordenar subcategorias dentro de cada categoria
+  userCategorias.forEach(c=> c.subcategorias.sort((a,b)=> a.nome.localeCompare(b.nome,'pt-BR',{ sensitivity:'base'})));
+  setCategorias(userCategorias);
       setLoading(false);
     });
 
@@ -179,62 +180,29 @@ export default function CategoriasPage() {
     if (!categoria.fixed) setModalCategoria(categoria);
   };
 
-  const handleSubcategoriaClick = (catId: string, sub: { nome: string; emoji: string }) => {
-    setModalSubcategoria({ categoriaId: catId, subcategoria: sub });
-  };
+  // Sem subcategorias
 
   return (
   <div className="h-full mx-auto p-4 bg-white/97 text-gray-800 mb-14 w-full">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Categorias</h1>
-        <button
-          className="text-purple-500 text-4xl cursor-pointer"
-          onClick={() =>
-            setModalCategoria({ id: "", nome: "", emoji: "📁", subcategorias: [] })
-          }
-        >
-          +
-        </button>
+      <div className="flex flex-col gap-3 mb-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold">Categorias</h1>
+          <button
+            className="text-purple-500 text-4xl cursor-pointer"
+            onClick={() =>
+              setModalCategoria({ id: "", nome: "", emoji: "📁", subcategorias: [] })
+            }
+          >
+            +
+          </button>
+        </div>
       </div>
-
-  <div className="grid gap-6 md:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 auto-rows-fr w-full">
-        {categorias.map((cat) => (
-          <div key={cat.id} className="bg-white rounded-2xl shadow p-4 h-full flex flex-col">
-            <div className="flex flex-row justify-between">
-              <div
-                className="flex items-center gap-2 cursor-pointer"
-                onClick={() => handleCategoriaClick(cat)}
-              >
-                <span className="text-xl">{cat.emoji}</span>
-                <h2 className="text-lg font-semibold">{cat.nome}</h2>
-              </div>
-              <button
-                onClick={() =>
-                  setModalSubcategoria({ categoriaId: cat.id, subcategoria: undefined })
-                }
-                className="text-purple-500 text-3xl cursor-pointer"
-              >
-                +
-              </button>
-            </div>
-            <hr className="my-4 border-t border-gray-300" />
-            <div className="flex justify-center items-center -translate-y-11 -mb-8">
-              <p className="text-center text-sm text-gray-500 mt-4 px-2 bg-white w-fit">
-                Subcategorias
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-4 mt-2">
-              {cat.subcategorias.map((sub, index) => (
-                <div
-                  key={index}
-                  onClick={() => handleSubcategoriaClick(cat.id, sub)}
-                  className="bg-gray-100 rounded-xl py-3 px-1 flex items-center gap-2 cursor-pointer hover:bg-gray-200"
-                >
-                  <span className="text-xl">{sub.emoji}</span>
-                  <span className="text-gray-800 text-xs overflow-hidden">{sub.nome}</span>
-                </div>
-              ))}
-            </div>
+      <div className="grid gap-4 md:gap-6 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
+        {categorias.map(cat => (
+          <div key={cat.id} className="bg-white shadow rounded-xl p-3 flex flex-col items-center gap-2 text-center cursor-pointer hover:shadow-md"
+               onClick={()=> handleCategoriaClick(cat)}>
+            <span className="text-2xl">{cat.emoji}</span>
+            <span className="text-[11px] font-medium text-gray-700 break-words leading-tight">{cat.nome}</span>
           </div>
         ))}
       </div>
@@ -272,48 +240,7 @@ export default function CategoriasPage() {
         />
       )}
 
-      {user && modalSubcategoria && (
-        <EntityEditModal
-          open={!!modalSubcategoria}
-          kind="subcategoria"
-          onClose={() => setModalSubcategoria(null)}
-          initialData={
-            modalSubcategoria.subcategoria
-              ? { nome: modalSubcategoria.subcategoria.nome, icone: modalSubcategoria.subcategoria.emoji }
-              : undefined
-          }
-          onSave={async ({ nome, icone }) => {
-            const catDocRef = doc(db, "users", user!.uid, "categorias", modalSubcategoria.categoriaId);
-            const docSnap = await getDoc(catDocRef);
-            const catData = docSnap.data();
-
-            const subcategorias = catData?.subcategorias || [];
-            const updated = modalSubcategoria.subcategoria
-              ? subcategorias.map((s: any) =>
-                  s.nome === modalSubcategoria.subcategoria?.nome ? { nome, emoji: icone } : s
-                )
-              : [...subcategorias, { nome, emoji: icone }];
-
-            await updateDoc(catDocRef, { subcategorias: updated });
-            setModalSubcategoria(null);
-          }}
-          onDelete={
-            modalSubcategoria.subcategoria
-              ? async () => {
-                  const catDocRef = doc(db, "users", user!.uid, "categorias", modalSubcategoria.categoriaId);
-                  const docSnap = await getDoc(catDocRef);
-                  const catData = docSnap.data();
-
-                  const subcategorias = catData?.subcategorias || [];
-                  const filtered = subcategorias.filter((s: { nome: string | undefined }) => s.nome !== modalSubcategoria.subcategoria?.nome);
-
-                  await updateDoc(catDocRef, { subcategorias: filtered });
-                  setModalSubcategoria(null);
-                }
-              : undefined
-          }
-        />
-      )}
+  {/* Subcategoria modal removido */}
 
     </div>
   );

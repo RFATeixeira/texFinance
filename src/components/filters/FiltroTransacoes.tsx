@@ -24,11 +24,11 @@ export default function FiltroTransacoes({
   diasDesabilitado,
 }: Props) {
   return (
-  <div className="flex flex-row flex-wrap gap-2 items-center text-sm text-gray-800">
+  <div className="flex flex-row flex-nowrap gap-2 items-center justify-around w-full text-sm text-gray-800 overflow-x-auto scrollbar-thin pb-1">
       {/* Se passar membros, mostra filtro por membro */}
       {membros && membros.length > 0 && setUsuarioSelecionado && usuarioSelecionado !== undefined ? (
         <select
-          className="min-w-[120px] border-2 border-purple-500 p-2 rounded-2xl focus:outline-0"
+          className="min-w-[110px] border-2 border-purple-500 px-2 py-2 rounded-2xl focus:outline-0"
           value={usuarioSelecionado}
           onChange={(e) => setUsuarioSelecionado(e.target.value)}
         >
@@ -44,7 +44,7 @@ export default function FiltroTransacoes({
         filtroTipo !== undefined &&
         setFiltroTipo !== undefined && (
           <select
-            className="min-w-[120px] border-2 border-purple-500 p-2 rounded-2xl focus:outline-0 md:hidden"
+            className="min-w-[110px] border-2 border-purple-500 px-2 py-2 rounded-2xl focus:outline-0 md:hidden"
             value={filtroTipo}
             onChange={(e) => setFiltroTipo(e.target.value)}
           >
@@ -56,8 +56,8 @@ export default function FiltroTransacoes({
         )
       )}
 
-      <select
-  className="min-w-[120px] border-2 border-purple-500 p-2 rounded-2xl focus:outline-0"
+    <select
+  className="min-w-[100px] border-2 border-purple-500 px-2 py-2 rounded-2xl focus:outline-0"
         value={periodoDias}
         onChange={(e) => setPeriodoDias(Number(e.target.value))}
         disabled={diasDesabilitado}
@@ -70,9 +70,9 @@ export default function FiltroTransacoes({
         <option value={360}>360 dias</option>
       </select>
 
-      <button
-        onClick={() => setOrdemReversa((prev) => !prev)}
-  className="min-w-[110px] px-3 py-2 rounded-2xl bg-purple-500 text-white hover:bg-purple-600 transition border-2 border-purple-500 duration-200 cursor-pointer font-medium whitespace-nowrap"
+  <button
+    onClick={() => setOrdemReversa((prev) => !prev)}
+  className="min-w-[90px] px-4 h-[44px] rounded-2xl bg-purple-500 text-white hover:bg-purple-600 transition border-2 border-purple-500 duration-200 cursor-pointer font-medium whitespace-nowrap flex-shrink-0 flex items-center justify-center"
       >
         Ordem: {ordemReversa ? '↓' : '↑'}
       </button>

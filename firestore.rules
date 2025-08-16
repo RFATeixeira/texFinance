@@ -48,6 +48,13 @@ service cloud.firestore {
         allow delete: if signedIn() && (request.auth.uid == membroUid || isAmbienteCreator(ambId));
       }
 
+      // Metadados de categorias compartilhadas (somente emoji/nome) para permitir exibição entre membros
+      match /categoryMeta/{catId} {
+        allow read, list: if signedIn() && isAmbienteMember(ambId);
+        allow create, update: if signedIn() && isAmbienteMember(ambId);
+        allow delete: if false; // não remover para manter histórico
+      }
+
       function isAmbienteCreator(a) {
         return get(/databases/$(database)/documents/ambiences/$(a)).data.criador == request.auth.uid;
       }

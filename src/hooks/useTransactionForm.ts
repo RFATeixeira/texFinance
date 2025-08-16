@@ -21,10 +21,8 @@ interface BaseValues {
   valorTotal?: number; // valor total (opcional para exibição)
   valorModo?: 'parcela' | 'total';
   categoria?: string;
-  subcategoria?: string;
   descricao?: string;
   ambiente?: string;
-  ocultar?: boolean;
 }
 
 interface UseTransactionFormParams {
@@ -44,7 +42,6 @@ export function useTransactionForm({ transacao, tipo, onSaved, onClose }: UseTra
     contaOrigem: transacao?.contaOrigem || '',
     contaDestino: transacao?.contaDestino || '',
     categoria: transacao?.categoria || '',
-    subcategoria: transacao?.subcategoria || '',
     cartaoId: transacao?.cartaoId || '',
     parcelas: transacao?.parcelas || 1,
     parcelaInicio: transacao?.parcelaNumero || 1,
@@ -53,7 +50,6 @@ export function useTransactionForm({ transacao, tipo, onSaved, onClose }: UseTra
     valorModo: 'parcela',
     descricao: transacao?.descricao || '',
     ambiente: transacao?.ambiente || 'pessoal',
-    ocultar: transacao?.ocultar || false,
   });
 
   const [contas, setContas] = useState<any[]>([]);
@@ -68,7 +64,17 @@ export function useTransactionForm({ transacao, tipo, onSaved, onClose }: UseTra
       const uid = auth.currentUser?.uid;
       if (!uid) return;
       const contasSnap = await getDocs(collection(db, 'users', uid, 'contas'));
-      setContas(contasSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      const contasList = contasSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setContas(contasList);
+      // Auto selecionar conta favorita ou única (apenas em criação e quando não transferência)
+      if (!transacao && tipo !== 'transferencia') {
+  const favorita = (contasList as any[]).find(c => c.favorita);
+        if (favorita) {
+          setValues(v => ({ ...v, conta: favorita.id }));
+        } else if (contasList.length === 1) {
+          setValues(v => ({ ...v, conta: contasList[0].id }));
+        }
+      }
       if (tipo !== 'transferencia') {
         const catSnap = await getDocs(collection(db, 'users', uid, 'categorias'));
         setCategorias(catSnap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -160,7 +166,6 @@ export function useTransactionForm({ transacao, tipo, onSaved, onClose }: UseTra
         valor: Number(values.valor),
         data: dateStringToTimestamp(values.data),
         descricao: values.descricao,
-        ocultar: values.ocultar,
         createdAt: Timestamp.now(),
       };
       // Lógica especial para transferências envolvendo conta de investimento
@@ -179,7 +184,6 @@ export function useTransactionForm({ transacao, tipo, onSaved, onClose }: UseTra
             valor: Number(values.valor),
             data: dateStringToTimestamp(values.data),
             descricao: values.descricao,
-            ocultar: values.ocultar,
             createdAt: Timestamp.now(),
             contaOrigem: values.contaOrigem,
             contaDestino: values.contaDestino,
@@ -208,8 +212,23 @@ export function useTransactionForm({ transacao, tipo, onSaved, onClose }: UseTra
         base.type = tipo;
         if (!values.cartaoId) base.conta = values.conta; // não salva conta se é compra em cartão
         base.categoria = values.categoria;
-        base.subcategoria = values.subcategoria;
         if (tipo === 'despesa') base.ambiente = values.ambiente;
+        // Captura e grava os emojis da categoria/subcategoria para exibição futura (inclusive em ambientes compartilhados)
+        try {
+          if (values.categoria) {
+            const catRef = doc(db, 'users', uid, 'categorias', values.categoria);
+            const catSnap = await getDoc(catRef);
+            if (catSnap.exists()) {
+              const catData: any = catSnap.data();
+              const subs: any[] = catData.subcategorias || [];
+              let catEmoji = catData.emoji || catData.icone || undefined;
+              let subEmoji: string | undefined;
+              if (catEmoji) base.categoriaEmoji = catEmoji;
+            }
+          }
+        } catch (e) {
+          console.warn('Não foi possível capturar emoji da categoria', e);
+        }
         if (tipo === 'despesa' && values.cartaoId) {
           base.cartaoId = values.cartaoId;
           base.parcelas = values.parcelas || 1;

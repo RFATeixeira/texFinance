@@ -18,7 +18,7 @@ export function AccountSelect({ contas, value, onChange, label = 'Conta' }: Acco
       >
         <option value="">Selecione</option>
         {contas.map((c) => (
-          <option key={c.id} value={c.id}>{c.nome || c.id}</option>
+          <option key={c.id} value={c.id}>{c.nome || c.id}{c.favorita ? ' ★' : ''}</option>
         ))}
       </select>
     </label>

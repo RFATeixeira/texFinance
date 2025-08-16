@@ -81,7 +81,7 @@ export default function MembersManageModal({ open, ambiente, onClose, onMembersC
   return (
     <div className="fixed inset-0 z-50 backdrop-blur-xs flex items-center justify-center text-gray-800">
       <div ref={ref} className="bg-white rounded-xl p-5 w-[90%] max-w-md shadow-lg max-h-[80vh] overflow-y-auto relative">
-        <button onClick={onClose} className="absolute top-4 right-4 text-gray-500"><FaTimes/></button>
+  <button onClick={onClose} className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition" aria-label="Fechar"><FaTimes className="text-xl"/></button>
         <h2 className="text-lg font-semibold mb-4">Gerenciar Pessoas</h2>
         <h3 className="text-sm font-semibold text-gray-600 mb-4">{ambiente.nome}</h3>
         {membros.length===0 && <p className="text-sm text-gray-500 italic">Nenhum membro.</p>}

@@ -11,7 +11,7 @@ interface ValueFieldProps {
 
 export function ValueField({ value, onChange, parcelado, parcelas=1, modo='parcela', onModoChange }: ValueFieldProps) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between">
         <label className="block text-sm font-semibold text-gray-700">Valor (R$)</label>
         {parcelado && (
@@ -25,7 +25,8 @@ export function ValueField({ value, onChange, parcelado, parcelas=1, modo='parce
       <input
         type="number"
         step="0.01"
-        className="w-full p-2 border-2 border-purple-500 rounded-2xl focus:outline-0"
+        inputMode="decimal"
+        className="w-full p-2 h-10 border-2 border-purple-500 rounded-2xl focus:outline-0 text-base leading-tight appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />

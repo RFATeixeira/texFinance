@@ -7,7 +7,7 @@ import { TransactionModal } from "@/components/transactions/TransactionModal";
 
 export default function CardTransacao({ transacao, onAtualizar }: { transacao: any;onAtualizar: () => void }) {
   const [open, setOpen] = useState(false);
-  const [emoji, setEmoji] = useState("❓");
+  const [emoji, setEmoji] = useState<string>(transacao.categoriaEmoji || "❓");
   const [userId, setUserId] = useState<string | null>(null);
 
   const tipo = transacao.customType || transacao.type;
@@ -27,54 +27,29 @@ export default function CardTransacao({ transacao, onAtualizar }: { transacao: a
   }, []);
 
   useEffect(() => {
-    async function fetchEmoji() {
+    async function ensureEmoji() {
       const fallback = transacao.type === 'receita' ? '💰' : transacao.type === 'transferencia' ? '🔄' : '💸';
-  if (!transacao.categoria) { setEmoji(fallback); return; }
-      const ownerUid = transacao.uid || transacao.userId || transacao.ownerId || userId; // tenta diversos campos
-  if (!ownerUid) { setEmoji(fallback); return; }
+      if (emoji && emoji !== '❓') return; // já temos algo válido
+      if (transacao.categoriaEmoji) {
+        setEmoji(transacao.categoriaEmoji);
+        return;
+      }
+      if (!transacao.categoria) { setEmoji(fallback); return; }
+      const ownerUid = transacao.uid || transacao.userId || transacao.ownerId || userId;
+      if (!ownerUid) { setEmoji(fallback); return; }
       try {
-        let categoriaData: any | null = null;
-        // 1) Tenta por ID direto
         const categoriaRef = doc(db, 'users', ownerUid, 'categorias', transacao.categoria);
         const categoriaSnap = await getDoc(categoriaRef);
-        if (categoriaSnap.exists()) {
-          categoriaData = categoriaSnap.data();
-        } else {
-          // 2) Tenta buscar por nome (case-insensitive) entre todas categorias
-            const catsSnap = await getDocs(collection(db, 'users', ownerUid, 'categorias'));
-            for (const c of catsSnap.docs) {
-              const data = c.data();
-              if (data.nome && typeof data.nome === 'string') {
-                if (data.nome.toLowerCase() === String(transacao.categoria).toLowerCase()) {
-                  categoriaData = data;
-                  break;
-                }
-              }
-            }
-        }
-        if (!categoriaData) {
-          console.debug('[CardTransacao] Categoria não encontrada', { categoria: transacao.categoria, ownerUid });
-          setEmoji(fallback);
-          return;
-        }
-        const subcategorias: any[] = categoriaData.subcategorias || [];
-        let chosen: string | null = null;
-        if (transacao.subcategoria) {
-          const subcatData = subcategorias.find(s => (s.nome||'').toLowerCase() === String(transacao.subcategoria).toLowerCase());
-          if (subcatData) {
-            chosen = subcatData.emoji || subcatData.icone || null;
-          }
-        }
-        if (!chosen) chosen = categoriaData.emoji || categoriaData.icone || null;
-        if (!chosen) console.debug('[CardTransacao] Sem emoji definido, usando fallback', { categoria: transacao.categoria, subcategoria: transacao.subcategoria });
+        if (!categoriaSnap.exists()) { setEmoji(fallback); return; }
+        const categoriaData: any = categoriaSnap.data();
+        const chosen = categoriaData.emoji || categoriaData.icone;
         setEmoji(chosen || fallback);
-      } catch (err) {
-        console.error('[CardTransacao] Erro ao buscar emoji:', err);
-    setEmoji(fallback);
+      } catch {
+        setEmoji(fallback);
       }
     }
-    fetchEmoji();
-  }, [transacao.categoria, transacao.subcategoria, transacao.uid, transacao.userId, transacao.ownerId, userId]);
+    ensureEmoji();
+  }, [transacao.categoria, transacao.uid, transacao.userId, transacao.ownerId, userId, emoji, transacao.categoriaEmoji]);
 
 
   return (

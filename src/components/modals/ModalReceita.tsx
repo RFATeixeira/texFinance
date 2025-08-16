@@ -34,13 +34,11 @@ export default function ModalReceita({ onClose }: ModalProps) {
   // Inputs
   const [conta, setConta] = useState("");
   const [categoria, setCategoria] = useState("");
-  const [subcategoria, setSubcategoria] = useState("");
   const [data, setData] = useState("");
   const [valor, setValor] = useState("");
   const [descricao, setDescricao] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [recorrente, setRecorrente] = useState(false);
-  const [ocultar, setOcultar] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
@@ -73,15 +71,13 @@ export default function ModalReceita({ onClose }: ModalProps) {
     }
 
     try {
-      const dados: any = {
-        categoria,
-        subcategoria,
+    const dados: any = {
+      categoria,
         data: dateStringToTimestamp(data),
         valor: Number(valor),
         descricao,
         observacoes,
         recorrente,
-        ocultar,
         type: "receita",
         conta,
         createdAt: Timestamp.now(),
@@ -90,7 +86,7 @@ export default function ModalReceita({ onClose }: ModalProps) {
       const colRef = collection(db, "users", user.uid, "transacoes");
       await addDoc(colRef, dados);
 
-      const contaRef = doc(db, "users", user.uid, "contas", conta);
+  const contaRef = doc(db, "users", user.uid, "contas", conta);
       const contaSnap = await getDoc(contaRef);
       if (contaSnap.exists()) {
         const saldoAtual = contaSnap.data().saldo || 0;
@@ -107,8 +103,7 @@ export default function ModalReceita({ onClose }: ModalProps) {
     }
   }
 
-  const subcategoriasDisponiveis =
-    categorias.find((c) => c.id === categoria)?.subcategorias || [];
+  // Subcategorias removidas
 
   return (
     <div
@@ -120,10 +115,11 @@ export default function ModalReceita({ onClose }: ModalProps) {
         onClick={(e) => e.stopPropagation()}
       >
         <button
-         onClick={onClose}
-         className="absolute top-4 right-4 text-gray-500 cursor-pointer"
+          onClick={onClose}
+          className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 cursor-pointer p-2 rounded-full hover:bg-gray-100 transition"
+          aria-label="Fechar"
         >
-         <FaTimes />
+          <FaTimes className="text-xl" />
         </button>
         <h2 className="text-xl text-gray-800 font-bold mb-4">Receita</h2>
 
@@ -147,10 +143,7 @@ export default function ModalReceita({ onClose }: ModalProps) {
           <label className="block text-gray-800 text-sm font-semibold">Categoria</label>
           <select
             value={categoria}
-            onChange={(e) => {
-              setCategoria(e.target.value);
-              setSubcategoria(""); // limpa subcategoria quando categoria muda
-            }}
+            onChange={(e) => setCategoria(e.target.value)}
             className="w-full p-2 text-gray-600 border-2 border-purple-500 outline-0 rounded-xl"
           >
             <option value="">Selecione uma categoria</option>
@@ -161,24 +154,6 @@ export default function ModalReceita({ onClose }: ModalProps) {
             ))}
           </select>
         </div>
-
-        {subcategoriasDisponiveis.length > 0 && (
-          <div className="mb-2">
-            <label className="block text-gray-800 text-sm font-semibold">Subcategoria</label>
-            <select
-              value={subcategoria}
-              onChange={(e) => setSubcategoria(e.target.value)}
-              className="w-full p-2 text-gray-600 border-2 border-purple-500 outline-0 rounded-xl"
-            >
-              <option value="">Selecione uma subcategoria</option>
-              {subcategoriasDisponiveis.map((sub, i) => (
-                <option key={i} value={sub.nome}>
-                  {sub.emoji} {sub.nome}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
 
         <div className="flex gap-2 mb-2">
           <div className="flex-1">
@@ -224,56 +199,13 @@ export default function ModalReceita({ onClose }: ModalProps) {
         <div className="flex text-sm items-center text-gray-800 font-semibold gap-2 mb-2">
           <input
             type="checkbox"
-            id="receita-recorrente"
-            className="peer hidden"
+            className="toggle-ios"
             checked={recorrente}
             onChange={(e) => setRecorrente(e.target.checked)}
           />
-          <label
-            htmlFor="receita-recorrente"
-            className="w-5 h-5 border-2 border-purple-500 rounded-md flex items-center justify-center peer-checked:bg-purple-500 peer-checked:border-purple-500 transition-colors cursor-pointer"
-          >
-            <svg
-              className="w-3 h-3 text-white hidden peer-checked:block"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="3"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-          </label>
-          <label htmlFor="receita-recorrente" className="cursor-pointer">
-            É recorrente
-          </label>
+          <span className="cursor-pointer select-none">É recorrente</span>
         </div>
 
-        <div className="flex text-sm items-center text-gray-800 font-semibold gap-2 mb-2">
-          <input
-            type="checkbox"
-            id="receita-ocultar"
-            className="peer hidden"
-            checked={ocultar}
-            onChange={(e) => setOcultar(e.target.checked)}
-          />
-          <label
-            htmlFor="receita-ocultar"
-            className="w-5 h-5 border-2 border-purple-500 rounded-md flex items-center justify-center peer-checked:bg-purple-500 peer-checked:border-purple-500 transition-colors cursor-pointer"
-          >
-            <svg
-              className="w-3 h-3 text-white hidden peer-checked:block"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="3"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-          </label>
-          <label htmlFor="receita-ocultar" className="cursor-pointer">
-            Ocultar transação dos relatórios
-          </label>
-        </div>
 
         <button
           onClick={salvarTransacao}

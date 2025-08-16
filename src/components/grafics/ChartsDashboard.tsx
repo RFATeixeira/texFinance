@@ -134,12 +134,12 @@ export default function ChartsDashboard(){
   <div className="flex flex-col gap-6 px-4 pb-4 overflow-x-hidden">
       {/* Barra sticky título + seletor mês */}
       <div
-        className="fixed top-0 left-0 right-0 md:left-56 md:w-[calc(100%-14rem)] z-40 bg-white/95 backdrop-blur flex flex-wrap gap-6 items-center border-b border-purple-100 shadow-xl px-4 py-3"
+  className="fixed top-0 left-0 right-0 md:left-56 md:w-[calc(100%-14rem)] z-30 bg-white/95 backdrop-blur flex flex-wrap gap-6 items-center border-b border-purple-100 shadow-md px-4 py-3"
       >
         <h1 className="text-lg font-semibold text-gray-800 mr-auto">Gráficos</h1>
         <div className="flex items-center gap-2 text-xs font-semibold text-gray-600">
           <span>Mês</span>
-          <select value={mes} onChange={e=> setMes(e.target.value)} className="border-2 border-purple-500 rounded-xl px-2 py-1 text-sm bg-white">
+          <select value={mes} onChange={e=> setMes(e.target.value)} className="border-2 border-purple-500 rounded-xl px-2 py-1 text-sm bg-white focus:outline-0 focus:ring-0">
             {Array.from({length:12}, (_,i)=> dayjs().subtract(i,'month')).map(d=> {
               const val = d.format('YYYY-MM');
               return <option key={val} value={val}>{d.format('MM/YYYY')}</option>;

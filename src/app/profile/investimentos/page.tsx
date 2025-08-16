@@ -16,6 +16,7 @@ export default function InvestimentosProfilePage(){
   const [open, setOpen] = useState(false);
   const [sel, setSel] = useState<ContaDoc | null>(null);
   const [form, setForm] = useState({ cdiPercent: '', investmentType: 'cdi' });
+  const [showOnDashboard, setShowOnDashboard] = useState(false);
 
   // CDI calculadora
   const [calcInput, setCalcInput] = useState({ valor: '', dias: '', cdiAnual: '', percent: '100' });
@@ -37,6 +38,7 @@ export default function InvestimentosProfilePage(){
       setContas(lista.filter(c=> c.tipoConta === 'investimento'));
       const transSnap = await getDocs(collection(db,'users', uid,'transacoes'));
       setTransacoes(transSnap.docs.map(d=> ({ id:d.id, ...(d.data() as any)})) as TransacaoDoc[]);
+  try { const pref = localStorage.getItem('showInvestCard'); setShowOnDashboard(pref === 'true'); } catch {}
     })();
   }, []);
 
@@ -84,13 +86,21 @@ export default function InvestimentosProfilePage(){
 
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-1">
         <h1 className="text-xl font-semibold text-gray-800">Investimentos</h1>
-        <div className="flex items-center gap-2 text-xs text-gray-500">
-          <span>{loadingCdi ? 'Atualizando CDI...' : cdi ? `CDI ${cdi.annualRatePercent.toFixed(2)}% a.a. (${cdi.source||'--'})` : 'Sem CDI'}</span>
-          <button onClick={()=> reloadCdi(true)} className="px-2 py-1 rounded bg-purple-600 hover:bg-purple-700 text-white font-medium">Atualizar CDI</button>
-        </div>
+        <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            className="toggle-ios"
+            checked={showOnDashboard}
+            onChange={e=> { const v=e.target.checked; setShowOnDashboard(v); try { localStorage.setItem('showInvestCard', v? 'true':'false'); } catch {} }}
+          />
+          <span>Mostrar na dashboard</span>
+        </label>
       </div>
+      <p className="text-[11px] text-gray-500 mb-4">
+        {loadingCdi ? 'Atualizando CDI...' : cdi ? `CDI ${cdi.annualRatePercent.toFixed(2)}% a.a. (${cdi.source||'--'})` : 'Sem CDI'}
+      </p>
       <section className="bg-white rounded-2xl p-4 mb-6 shadow">
         <h2 className="text-md font-semibold mb-2 text-purple-700">Calculadora CDI</h2>
         <div className="grid grid-cols-2 md:grid-cols-6 gap-3 text-sm items-end">
@@ -111,7 +121,7 @@ export default function InvestimentosProfilePage(){
             <input className="border rounded px-2 py-1" value={calcInput.percent} onChange={e=> setCalcInput(i=> ({...i, percent:e.target.value}))} />
           </div>
           <div className="flex flex-col">
-            <button onClick={calc} className="mt-5 bg-purple-600 hover:bg-purple-700 text-white rounded px-3 py-2 font-medium">Calcular</button>
+            <button onClick={calc} className="mt-5 bg-purple-500 hover:bg-purple-600 text-white rounded px-3 py-2 font-medium">Calcular</button>
           </div>
           <div className="flex flex-col gap-1 text-xs bg-purple-50 rounded p-2 min-h-[60px]">
             <span className="text-gray-600">Final: <b>{calcResult.final !== undefined ? 'R$ '+calcResult.final.toLocaleString('pt-BR',{minimumFractionDigits:2}) : '-'}</b></span>
@@ -170,7 +180,7 @@ export default function InvestimentosProfilePage(){
             <p className="text-[11px] text-gray-500">Taxa anual efetiva = CDI base do dia * % do CDI. Atualiza diariamente automaticamente.</p>
             <div className="pt-2 flex gap-2">
               <button type="button" onClick={()=> setOpen(false)} className="flex-1 py-2 rounded bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium">Cancelar</button>
-              <button type="submit" className="flex-1 py-2 rounded bg-purple-600 hover:bg-purple-700 text-white font-medium">Salvar</button>
+              <button type="submit" className="flex-1 py-2 rounded bg-purple-500 hover:bg-purple-600 text-white font-medium">Salvar</button>
             </div>
           </form>
         )}

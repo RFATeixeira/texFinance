@@ -36,6 +36,19 @@ export default function Navbar() {
   const pathname = usePathname();
 
   const [showBottomModal, setShowBottomModal] = useState(false);
+  const [sheetRender, setSheetRender] = useState(false);
+  const [sheetClosing, setSheetClosing] = useState(false);
+
+  useEffect(()=>{
+    if (showBottomModal) {
+      setSheetRender(true);
+      setSheetClosing(false);
+    } else if (sheetRender) {
+      setSheetClosing(true);
+      const t = setTimeout(()=>{ setSheetRender(false); setSheetClosing(false); }, 260);
+      return ()=> clearTimeout(t);
+    }
+  }, [showBottomModal, sheetRender]);
   const [transactionModalOpen, setTransactionModalOpen] = useState(false);
   const [transactionType, setTransactionType] = useState<TransactionType | null>(null);
 
@@ -52,14 +65,16 @@ export default function Navbar() {
   return (
     <>
       {/* Bottom Modal */}
-      {showBottomModal && (
+      {sheetRender && (
         <div
-          className="fixed inset-0 z-10 md:z-30 flex md:items-center md:justify-center items-end justify-center backdrop-blur-xs"
+          className={`fixed inset-0 z-30 md:z-30 flex md:items-center md:justify-center items-end justify-center backdrop-blur-xs bg-transparent transition-opacity duration-200 ${sheetClosing ? 'opacity-0' : 'opacity-100'}`}
           onClick={() => setShowBottomModal(false)}
         >
           <div
-            className="bg-white w-full md:max-w-md md:rounded-2xl md:h-auto h-[40%] rounded-t-2xl p-4 mx-2 md:mx-0 md:shadow-xl"
+            id="add-bottom-sheet"
+            className={`bg-white w-full md:max-w-md md:rounded-2xl md:h-auto h-[40%] rounded-t-2xl p-4 mx-2 md:mx-0 md:shadow-xl transform ${sheetClosing ? 'sheet-leave' : 'sheet-enter'}`}
             onClick={(e) => e.stopPropagation()}
+            style={{ animationFillMode:'forwards' }}
           >
             <h2 className="text-lg text-purple-500 font-semibold mb-2 md:mb-4 bg-purple-300/50 rounded-t-2xl -my-4 -mx-4 p-4 md:rounded-2xl md:my-0 md:mx-0">
               Adicionar
@@ -117,7 +132,7 @@ export default function Navbar() {
       )}
 
       {/* Transaction Modal Unificado */}
-      {transactionModalOpen && transactionType && (
+  {transactionModalOpen && transactionType && (
         <TransactionModal
           open={transactionModalOpen}
           onClose={() => { setTransactionModalOpen(false); setTransactionType(null); }}
@@ -126,24 +141,29 @@ export default function Navbar() {
         />
       )}
 
-  {/* Mobile Bottom Navbar */}
-  <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-between items-center px-8 pb-6 z-20 shadow-md">
+      {/* Mobile Bottom Navbar */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-between items-center px-8 pb-6 z-40 shadow-md">
         <Link href="/dashboard" className={linkClass("/dashboard")}>
-          <FaHome className="text-2xl"/>
+          <FaHome className="text-2xl" />
         </Link>
         <Link href="/transactions" className={linkClass("/transactions")}>
-          <FaList className="text-2xl"/>
+          <FaList className="text-2xl" />
         </Link>
         <div className="relative -top-6">
-          <button onClick={() => setShowBottomModal(true)} className={linkClass("", true)}>
+          <button
+            onClick={() => setShowBottomModal(prev => !prev)}
+            aria-expanded={showBottomModal}
+            aria-controls="add-bottom-sheet"
+            className={linkClass("", true)}
+          >
             <FaPlus className="text-white text-3xl" />
           </button>
         </div>
         <Link href="/grafics" className={linkClass("/grafics")}>
-          <FaChartBar className="text-2xl"/>
+          <FaChartBar className="text-2xl" />
         </Link>
         <Link href="/profile" className={linkClass("/profile")}>
-          <FaUser className="text-2xl"/>
+          <FaUser className="text-2xl" />
         </Link>
       </nav>
 
@@ -169,8 +189,8 @@ export default function Navbar() {
         </div>
         <div className="p-4 border-t border-gray-100">
           <button
-            onClick={() => setShowBottomModal(true)}
-            className="w-full flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl py-2 text-sm font-medium transition"
+            onClick={() => setShowBottomModal(prev => !prev)}
+            className="w-full flex items-center justify-center gap-2 bg-purple-500 hover:bg-purple-600 text-white rounded-xl py-2 text-sm font-medium transition"
           >
             <FaPlus className="text-base" /> Nova
           </button>

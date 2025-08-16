@@ -120,7 +120,7 @@ const months = useMemo(() => {
     </div>
   </div>
 
-      <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+  <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         <CartoesList
         onAdd={() => setEntityModal({open:true,type:'cartao'})} // substituído
         showAll={false}
