@@ -5,6 +5,8 @@ import { auth, db } from "../../app/lib/firebaseConfig";
 import { collection, getDocs } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { FaDollarSign } from "react-icons/fa";
+import dayjs from 'dayjs';
+import 'dayjs/locale/pt-br';
 import { formatarValorVisibilidade } from "@/utils/saldoInvisivel";
 
 export default function CardDespesas({ mes, ano }: { mes: number; ano: number }) {
@@ -77,7 +79,7 @@ export default function CardDespesas({ mes, ano }: { mes: number; ano: number })
         <FaDollarSign className="text-red-600" />
       </div>
       <div>
-        <p className="text-[0.7rem] text-gray-600 font-semibold">Despesas</p>
+  <p className="text-[0.7rem] text-gray-600 font-semibold">Despesas de <span className="font-bold text-gray-900">{dayjs().locale('pt-br').month(mes).format('MMM')}</span></p>
         <p className="text-gray-800 font-bold text-sm">
           <span className="text-gray-600 text-[0.7rem]">R$ </span>
           {formatarValorVisibilidade(total, mostrarValores)}
