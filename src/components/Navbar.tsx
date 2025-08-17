@@ -169,8 +169,9 @@ export default function Navbar() {
 
       {/* Desktop Sidebar */}
   <aside className="hidden md:flex flex-col fixed left-0 top-0 bottom-0 w-56 bg-white border-r border-gray-200 z-40 shadow-sm">
-        <div className="h-16 flex items-center px-5 border-b border-gray-100 font-semibold text-purple-600 tracking-wide">
-          Tex Finance
+        <div className="h-16 flex items-center justify-between px-5 border-b border-gray-100 font-semibold text-purple-600 tracking-wide">
+          <span className="text-base">Tex Finance</span>
+          <img src="/icons/icon-512x512.png" alt="Logo" className="h-8 w-8 object-contain" />
         </div>
         <div className="flex-1 overflow-y-auto py-4 px-2 space-y-1 text-sm">
           <SidebarLink href="/dashboard" icon={<FaHome />} active={pathname==="/dashboard"}>Dashboard</SidebarLink>
